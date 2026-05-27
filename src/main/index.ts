@@ -100,11 +100,18 @@ function setupAutoUpdater(win: BrowserWindow): void {
     });
   });
 
-  // Fire-and-forget. If there's no published release feed configured, this
-  // simply logs an error which we surface as a benign warning in the renderer.
-  autoUpdater.checkForUpdatesAndNotify().catch((err) => {
-    console.warn('[update] check failed:', err);
-  });
+  const check = () => {
+    autoUpdater.checkForUpdates().catch((err) => {
+      // Usually a benign "no releases yet" or a transient network blip.
+      console.warn('[update] check failed:', err);
+    });
+  };
+
+  // Initial check shortly after launch (give the renderer a moment to wire
+  // its toast listener), then every 30 min while the app is running so an
+  // update released mid-session reaches users without a restart.
+  setTimeout(check, 4000);
+  setInterval(check, 30 * 60 * 1000);
 }
 
 function createTray(): Tray {

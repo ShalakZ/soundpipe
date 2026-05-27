@@ -189,10 +189,26 @@ export function App() {
           });
           break;
         case 'downloaded':
+          // Sticky toast with an explicit "Restart & install" action — the
+          // user can act on the update immediately instead of having to
+          // remember to quit via the tray. Clicking the button quits the
+          // app and runs the NSIS upgrade installer.
           pushToast({
             kind: 'success',
-            message: `Update ${event.version} downloaded. It will install next time you quit (tray → Quit).`,
-            autoDismissMs: 8000,
+            message: `Update ${event.version} is ready. Restart SoundPipe to install it.`,
+            autoDismissMs: 0,
+            actions: [
+              {
+                label: 'Restart & install',
+                onClick: () => void window.api.quitAndInstall(),
+              },
+              {
+                label: 'Later',
+                onClick: () => {
+                  /* dismiss via ToastStack's own dismiss-on-action */
+                },
+              },
+            ],
           });
           break;
         case 'error':

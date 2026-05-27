@@ -1,6 +1,6 @@
 {
   "name": "soundpipe",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "SoundPipe — free open-source soundboard for Windows that plays sounds into a virtual mic for Discord, OBS, and games",
   "main": "out/main/index.js",
   "author": "ziad",

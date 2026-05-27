@@ -18,6 +18,7 @@ const api = {
 
   getAppVersion: (): Promise<string> => ipcRenderer.invoke('app:version'),
   showAboutPanel: (): Promise<void> => ipcRenderer.invoke('app:show-about'),
+  quitAndInstall: (): Promise<void> => ipcRenderer.invoke('app:quit-and-install'),
   updateSettings: (patch: Partial<Settings>): Promise<Settings> =>
     ipcRenderer.invoke('settings:update', patch),
 

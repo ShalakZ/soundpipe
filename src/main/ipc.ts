@@ -1,4 +1,5 @@
 import { app, ipcMain, dialog, BrowserWindow, shell, Menu } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import { readFile } from 'node:fs/promises';
 import { nanoid } from 'nanoid';
 import { renameSync } from 'node:fs';
@@ -194,6 +195,12 @@ export function registerIpc(window: BrowserWindow): void {
 
   ipcMain.handle('app:version', () => app.getVersion());
   ipcMain.handle('app:show-about', () => app.showAboutPanel());
+  // Triggered by the "Restart & install" toast button. quitAndInstall
+  // exits the app immediately and runs the NSIS upgrade installer, which
+  // re-launches us when finished.
+  ipcMain.handle('app:quit-and-install', () => {
+    autoUpdater.quitAndInstall();
+  });
 
   ipcMain.handle('settings:update', (_, patch) => {
     const next = setSettings(patch);
