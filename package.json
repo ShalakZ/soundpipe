@@ -1,0 +1,81 @@
+{
+  "name": "soundboard",
+  "version": "0.1.0",
+  "description": "Free soundboard with virtual-microphone routing for games and voice apps",
+  "main": "out/main/index.js",
+  "author": "ziad",
+  "license": "MIT",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
+    "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "package": "electron-vite build && electron-builder --win --x64",
+    "fetch-yt-dlp": "node scripts/download-yt-dlp.mjs",
+    "ensure-electron": "node scripts/ensure-electron.mjs",
+    "postinstall": "node scripts/download-yt-dlp.mjs && electron-builder install-app-deps && node scripts/ensure-electron.mjs"
+  },
+  "dependencies": {
+    "electron-store": "8.2.0",
+    "electron-updater": "^6.8.3",
+    "get-windows": "^9.2.0",
+    "jszip": "^3.10.1",
+    "koffi": "^2.10.0",
+    "nanoid": "5.0.9",
+    "uiohook-napi": "1.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "20.12.7",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "@vitejs/plugin-react": "4.3.4",
+    "autoprefixer": "10.4.20",
+    "electron": "^42.2.0",
+    "electron-builder": "^26.8.1",
+    "electron-vite": "^5.0.0",
+    "postcss": "^8.5.15",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "tailwindcss": "3.4.15",
+    "typescript": "5.6.3",
+    "vite": "5.4.11",
+    "zustand": "4.5.5"
+  },
+  "overrides": {
+    "vite": "5.4.11"
+  },
+  "build": {
+    "appId": "com.ziad.soundboard",
+    "productName": "Soundboard",
+    "copyright": "© ${author} — MIT licensed",
+    "directories": {
+      "buildResources": "resources"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/tray-icon.png",
+        "to": "tray-icon.png"
+      }
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "resources/icon.ico",
+      "artifactName": "Soundboard-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Soundboard"
+    }
+  }
+}

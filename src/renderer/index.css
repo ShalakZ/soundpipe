@@ -1,0 +1,164 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Theme palettes ───────────────────────────────────────────────────────
+   Each color is a space-separated R G B triple so Tailwind's alpha-value
+   modifiers (`bg-accent/30`, `border-danger/40`, …) keep working via the
+   `rgb(var(--c-X) / <alpha-value>)` form in tailwind.config.js.
+   A theme is applied by setting `<html data-theme="…">` in App.tsx.        */
+
+:root,
+[data-theme="midnight"] {
+  --c-bg: 15 17 21;
+  --c-surface: 23 26 33;
+  --c-surface2: 31 35 48;
+  --c-border: 42 47 61;
+  --c-accent: 124 92 255;
+  --c-accent-hover: 148 121 255;
+  --c-text: 230 232 239;
+  --c-muted: 164 170 184;
+  --c-danger: 239 68 68;
+}
+
+[data-theme="ocean"] {
+  --c-bg: 10 20 34;
+  --c-surface: 18 34 54;
+  --c-surface2: 28 49 81;
+  --c-border: 41 71 99;
+  --c-accent: 20 184 166;
+  --c-accent-hover: 45 212 191;
+  --c-text: 224 242 254;
+  --c-muted: 148 163 184;
+  --c-danger: 248 113 113;
+}
+
+[data-theme="forest"] {
+  --c-bg: 10 20 14;
+  --c-surface: 17 36 24;
+  --c-surface2: 26 53 39;
+  --c-border: 44 77 58;
+  --c-accent: 132 204 22;
+  --c-accent-hover: 163 230 53;
+  --c-text: 236 253 245;
+  --c-muted: 148 168 156;
+  --c-danger: 239 68 68;
+}
+
+[data-theme="sunset"] {
+  --c-bg: 26 15 10;
+  --c-surface: 43 24 16;
+  --c-surface2: 61 36 24;
+  --c-border: 90 58 42;
+  --c-accent: 249 115 22;
+  --c-accent-hover: 251 146 60;
+  --c-text: 255 247 237;
+  --c-muted: 194 168 150;
+  --c-danger: 239 68 68;
+}
+
+[data-theme="light"] {
+  --c-bg: 248 250 252;
+  --c-surface: 255 255 255;
+  --c-surface2: 241 245 249;
+  --c-border: 203 213 225;
+  --c-accent: 124 92 255;
+  --c-accent-hover: 109 77 255;
+  --c-text: 15 23 42;
+  --c-muted: 71 85 105;
+  --c-danger: 220 38 38;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+button { -webkit-app-region: no-drag; }
+
+input[type="range"] {
+  accent-color: rgb(var(--c-accent));
+}
+
+/* Modal entry animation — backdrop fades in, panel scales from 96% to 100%.
+   We don't animate exits (they'd need React Transition Group to delay unmount),
+   but the fade-in alone makes modals feel less abrupt. */
+@keyframes sb-modal-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes sb-modal-rise {
+  from { opacity: 0; transform: scale(0.96) translateY(4px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+.fixed.inset-0[class*="bg-black"] { animation: sb-modal-fade 120ms ease-out; }
+.fixed.inset-0[class*="bg-black"] > div { animation: sb-modal-rise 140ms ease-out; }
+
+/* Keyboard focus ring — applies to anything tab-navigable, but only when the
+   user is actually navigating with the keyboard (focus-visible). Mouse clicks
+   don't trigger it, so dark-theme UI stays clean during normal use. */
+:focus-visible {
+  outline: 2px solid rgb(var(--c-accent));
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+button:focus-visible,
+[role="button"]:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgb(var(--c-accent));
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgb(var(--c-border)); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--c-muted) / 0.5); }
+
+/* Pulse ring around a playing card — `box-shadow` keyframe is GPU-cheap when
+   there are only a few simultaneous voices, which is the realistic case. */
+@keyframes sb-playing-pulse {
+  0%   { box-shadow: 0 0 0 0   rgb(var(--c-accent) / 0.55); }
+  70%  { box-shadow: 0 0 0 8px rgb(var(--c-accent) / 0); }
+  100% { box-shadow: 0 0 0 0   rgb(var(--c-accent) / 0); }
+}
+.sb-playing {
+  animation: sb-playing-pulse 1.4s ease-out infinite;
+  border-color: rgb(var(--c-accent)) !important;
+  background-color: rgb(var(--c-accent) / 0.08);
+}
+
+/* Indeterminate progress sweep under a playing card. Pure transform =
+   compositor-only, no layout. */
+@keyframes sb-playing-sweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.sb-playing-sweep {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  overflow: hidden;
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+  pointer-events: none;
+}
+.sb-playing-sweep::after {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgb(var(--c-accent) / 0)   0%,
+    rgb(var(--c-accent) / 0.9) 50%,
+    rgb(var(--c-accent) / 0)   100%
+  );
+  animation: sb-playing-sweep 1.6s linear infinite;
+}
