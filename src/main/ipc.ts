@@ -1,7 +1,8 @@
 import { app, ipcMain, dialog, BrowserWindow, shell, Menu } from 'electron';
 import { readFile } from 'node:fs/promises';
 import { nanoid } from 'nanoid';
-import { basename, extname } from 'node:path';
+import { renameSync } from 'node:fs';
+import { basename, extname, join, dirname } from 'node:path';
 import type {
   Clip,
   Hotkey,
@@ -35,6 +36,7 @@ import {
 } from './storage';
 import { importAudioFile } from './file-import';
 import { ensureYtDlp, importFromUrl, isYtDlpAvailable } from './url-import';
+import { buildUniqueSoundFilename, getProfiles, moveSound } from './storage';
 import { installVbCable, vbCableLikelyPresent } from './vb-cable';
 import { exportProfile, importProfileBundle } from './profile-io';
 import {
@@ -291,6 +293,15 @@ export function registerIpc(window: BrowserWindow): void {
     },
   );
 
+  ipcMain.handle(
+    'sound:move',
+    (_, fromProfileId: string, soundId: string, toProfileId: string) => {
+      const profiles = moveSound(fromProfileId, soundId, toProfileId);
+      rebindHotkeys(window);
+      return profiles;
+    },
+  );
+
   ipcMain.handle('hotkey:capture', (): Promise<Hotkey> => captureNextHotkey());
   ipcMain.handle('hotkey:cancel-capture', () => {
     cancelCapture();
@@ -440,10 +451,28 @@ export function registerIpc(window: BrowserWindow): void {
       });
       const ext = extname(filePath);
       const fallbackName = basename(filePath, ext) || 'Downloaded sound';
+      const displayName = title || fallbackName;
+      // yt-dlp writes to a nanoid-named temp file; rename to a friendly name
+      // so "Show in folder" reads cleanly. Skip if rename fails — the import
+      // still succeeds, just with the temp name.
+      let finalPath = filePath;
+      const profile = getProfiles().find((p) => p.id === profileId);
+      if (profile) {
+        const friendly = buildUniqueSoundFilename(profile, displayName, ext);
+        const target = join(dirname(filePath), friendly);
+        if (target !== filePath) {
+          try {
+            renameSync(filePath, target);
+            finalPath = target;
+          } catch (err) {
+            console.warn('[ipc] url-import rename to friendly failed:', err);
+          }
+        }
+      }
       const sound: Sound = {
         id: nanoid(),
-        name: title || fallbackName,
-        filePath,
+        name: displayName,
+        filePath: finalPath,
         hotkey: null,
         volume: 1,
         pitch: 1,
@@ -457,18 +486,41 @@ export function registerIpc(window: BrowserWindow): void {
 
   ipcMain.handle(
     'sound:show-context-menu',
-    (event): Promise<SoundContextAction | null> => {
+    (event, sourceProfileId?: string): Promise<SoundContextAction | null> => {
       return new Promise((resolve) => {
         let action: SoundContextAction | null = null;
-        const menu = Menu.buildFromTemplate([
-          { label: 'Rename', click: () => (action = 'rename') },
-          { label: 'Duplicate', click: () => (action = 'duplicate') },
-          { label: 'Trim…', click: () => (action = 'trim') },
+        // The renderer passes the source profileId so we can build the
+        // Move-to submenu from the OTHER profiles. If no other profiles
+        // exist, the submenu is hidden entirely.
+        const allProfiles = getProfiles();
+        const otherProfiles =
+          typeof sourceProfileId === 'string'
+            ? allProfiles.filter((p) => p.id !== sourceProfileId)
+            : [];
+
+        const template: Electron.MenuItemConstructorOptions[] = [
+          { label: 'Rename', click: () => (action = { kind: 'rename' }) },
+          { label: 'Duplicate', click: () => (action = { kind: 'duplicate' }) },
+          { label: 'Trim…', click: () => (action = { kind: 'trim' }) },
+        ];
+        if (otherProfiles.length > 0) {
+          template.push({
+            label: 'Move to',
+            submenu: otherProfiles.map((p) => ({
+              label: p.name,
+              click: () =>
+                (action = { kind: 'move-to-profile', targetProfileId: p.id }),
+            })),
+          });
+        }
+        template.push(
           { type: 'separator' },
-          { label: 'Show in folder', click: () => (action = 'show-in-folder') },
+          { label: 'Show in folder', click: () => (action = { kind: 'show-in-folder' }) },
           { type: 'separator' },
-          { label: 'Remove', click: () => (action = 'remove') },
-        ]);
+          { label: 'Remove', click: () => (action = { kind: 'remove' }) },
+        );
+
+        const menu = Menu.buildFromTemplate(template);
         const win = BrowserWindow.fromWebContents(event.sender);
         if (!win) {
           resolve(null);

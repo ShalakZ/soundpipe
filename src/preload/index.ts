@@ -137,8 +137,17 @@ const api = {
   showInFolder: (filePath: string): Promise<void> =>
     ipcRenderer.invoke('shell:show-in-folder', filePath),
 
-  showSoundContextMenu: (): Promise<SoundContextAction | null> =>
-    ipcRenderer.invoke('sound:show-context-menu'),
+  showSoundContextMenu: (
+    sourceProfileId?: string,
+  ): Promise<SoundContextAction | null> =>
+    ipcRenderer.invoke('sound:show-context-menu', sourceProfileId),
+
+  moveSound: (
+    fromProfileId: string,
+    soundId: string,
+    toProfileId: string,
+  ): Promise<Profile[]> =>
+    ipcRenderer.invoke('sound:move', fromProfileId, soundId, toProfileId),
 
   isUrlImportAvailable: (): Promise<boolean> =>
     ipcRenderer.invoke('url:is-available'),

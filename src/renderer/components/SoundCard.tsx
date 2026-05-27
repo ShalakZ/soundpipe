@@ -51,9 +51,9 @@ export function SoundCard({
 
   const onContextMenu = async (e: ReactMouseEvent) => {
     e.preventDefault();
-    const action = await window.api.showSoundContextMenu();
+    const action = await window.api.showSoundContextMenu(profileId);
     if (!action) return;
-    switch (action) {
+    switch (action.kind) {
       case 'rename':
         startRenaming();
         break;
@@ -71,6 +71,20 @@ export function SoundCard({
       case 'remove':
         await onRemove();
         break;
+      case 'move-to-profile': {
+        const next = await window.api.moveSound(
+          profileId,
+          sound.id,
+          action.targetProfileId,
+        );
+        setProfiles(next);
+        useStore.getState().pushToast({
+          kind: 'info',
+          message: `Moved “${sound.name}” to another soundboard.`,
+          autoDismissMs: 2500,
+        });
+        break;
+      }
     }
   };
 

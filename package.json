@@ -1,6 +1,6 @@
 {
   "name": "soundpipe",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "SoundPipe — free open-source soundboard for Windows that plays sounds into a virtual mic for Discord, OBS, and games",
   "main": "out/main/index.js",
   "author": "ziad",
@@ -51,7 +51,9 @@
     "productName": "SoundPipe",
     "copyright": "© ${author} — MIT licensed",
     "compression": "maximum",
-    "electronLanguages": ["en-US"],
+    "electronLanguages": [
+      "en-US"
+    ],
     "directories": {
       "buildResources": "resources",
       "output": "release"
@@ -75,10 +77,24 @@
       }
     ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "resources/icon.ico",
       "artifactName": "SoundPipe-Setup-${version}.${ext}"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ShalakZ",
+        "repo": "soundpipe"
+      }
+    ],
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,

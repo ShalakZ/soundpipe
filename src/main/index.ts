@@ -17,6 +17,7 @@ import { registerIpc } from './ipc';
 import { stopForegroundPolling } from './foreground';
 import { autoPttController } from './auto-ptt';
 import { micDuckingController } from './mic-ducking';
+import { migrateToFriendlyNames } from './storage';
 
 const isDev = !app.isPackaged;
 
@@ -242,6 +243,12 @@ app.whenReady().then(() => {
         });
     },
   );
+
+  // One-shot rename of nanoid-keyed profile folders / sound files to
+  // human-readable names. Idempotent (gated by a settings flag) and safe to
+  // run before the renderer hydrates — paths are updated in the store so the
+  // renderer sees the new layout from its first getState() call.
+  migrateToFriendlyNames();
 
   startHook();
   // Foreground polling + auto-PTT focus check are started lazily by

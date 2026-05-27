@@ -69,6 +69,14 @@ export type Profile = {
    * accepts the anti-cheat risk by enabling it (UI shows a warning).
    */
   autoPtt?: Hotkey | null;
+  /**
+   * Actual on-disk directory name under `userData/sounds/`. Derived from the
+   * profile name with sanitization + collision suffix. Stored explicitly so
+   * we can rename the folder when the profile is renamed without losing track
+   * of which directory belongs to which profile. Falls back to `id` if unset
+   * (pre-migration data).
+   */
+  folderName?: string;
 };
 
 export type ViewMode = 'grid' | 'list';
@@ -117,6 +125,11 @@ export type Settings = {
   micDucking?: MicDuckingSettings;
   /** Set once the user has finished the first-run setup wizard. */
   setupComplete?: boolean;
+  /**
+   * Set once the one-shot file-naming migration has run (renames legacy
+   * id-based folders/files to human-readable names on first launch).
+   */
+  friendlyNamesMigrated?: boolean;
 };
 
 export type MicDuckingSettings = {
@@ -149,11 +162,12 @@ export type HotkeyEvent =
   | { type: 'clip-save' };
 
 export type SoundContextAction =
-  | 'rename'
-  | 'duplicate'
-  | 'trim'
-  | 'show-in-folder'
-  | 'remove';
+  | { kind: 'rename' }
+  | { kind: 'duplicate' }
+  | { kind: 'trim' }
+  | { kind: 'show-in-folder' }
+  | { kind: 'remove' }
+  | { kind: 'move-to-profile'; targetProfileId: string };
 
 export type UrlImportProgress =
   | { kind: 'title'; title: string }
