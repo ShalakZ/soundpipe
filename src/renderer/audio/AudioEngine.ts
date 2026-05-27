@@ -48,7 +48,7 @@ function attachMediaErrorLogger(el: HTMLAudioElement, label: string, src: string
     if ((el as SilentableAudio).__sbDisposed) return;
     const e = el.error;
     console.error(
-      `[soundboard] ${label} audio error`,
+      `[soundpipe] ${label} audio error`,
       e ? `code=${e.code} (${MEDIA_ERR_NAMES[e.code] ?? '?'}) message=${e.message}` : '(no error)',
       'src=',
       src,
@@ -136,7 +136,7 @@ export class AudioEngine {
 
   private async play(sound: Sound): Promise<void> {
     const src = toSbFileUrl(sound.filePath);
-    console.log('[soundboard] play', sound.name, 'src=', src, 'fsPath=', sound.filePath);
+    console.log('[soundpipe] play', sound.name, 'src=', src, 'fsPath=', sound.filePath);
     // hold + toggle both keep the sound playing until externally stopped;
     // oneshot may either play once or N times (handled via repeatsLeft + onEnded).
     const shouldLoopForever = sound.mode === 'hold' || sound.mode === 'toggle';

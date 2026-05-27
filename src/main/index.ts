@@ -109,14 +109,14 @@ function setupAutoUpdater(win: BrowserWindow): void {
 function createTray(): Tray {
   const icon = nativeImage.createFromPath(trayIconPath());
   const t = new Tray(icon);
-  t.setToolTip(`Soundboard v${app.getVersion()}`);
+  t.setToolTip(`SoundPipe v${app.getVersion()}`);
   t.setContextMenu(
     Menu.buildFromTemplate([
-      { label: 'Show Soundboard', click: showMainWindow },
-      { label: 'About Soundboard', click: () => app.showAboutPanel() },
+      { label: 'Show SoundPipe', click: showMainWindow },
+      { label: 'About SoundPipe', click: () => app.showAboutPanel() },
       { type: 'separator' },
       {
-        label: 'Quit Soundboard',
+        label: 'Quit SoundPipe',
         click: () => {
           isQuitting = true;
           app.quit();
@@ -167,7 +167,7 @@ app.whenReady().then(() => {
   // chip in the header. Keeping the copyright generic since this is MIT-
   // licensed and not commercially attributed to anyone in particular.
   app.setAboutPanelOptions({
-    applicationName: 'Soundboard',
+    applicationName: 'SoundPipe',
     applicationVersion: app.getVersion(),
     version: app.getVersion(),
     copyright: `© ${new Date().getFullYear()} — MIT licensed`,

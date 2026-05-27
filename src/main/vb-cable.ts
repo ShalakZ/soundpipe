@@ -38,7 +38,7 @@ export async function installVbCable(
   onProgress: (p: CableInstallProgress) => void,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
-    const tmp = join(tmpdir(), 'soundboard-vbcable');
+    const tmp = join(tmpdir(), 'soundpipe-vbcable');
     if (!existsSync(tmp)) mkdirSync(tmp, { recursive: true });
     const zipPath = join(tmp, 'VBCABLE_Driver_Pack.zip');
 
@@ -94,7 +94,7 @@ function download(
   redirectsLeft = 5,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    httpsGet(url, { headers: { 'User-Agent': 'soundboard' } }, (res) => {
+    httpsGet(url, { headers: { 'User-Agent': 'soundpipe' } }, (res) => {
       if (
         (res.statusCode === 301 ||
           res.statusCode === 302 ||

@@ -1,4 +1,4 @@
-# Soundboard
+# SoundPipe
 
 A free, open-source soundboard for Windows that pipes your sounds **into a virtual microphone** — so games, Discord, OBS, or anything else that listens to a mic hears them as if you'd spoken them.
 
@@ -12,10 +12,10 @@ The trick: Windows has no built-in way to inject audio into a microphone, so the
 
 ## Install
 
-1. Grab the latest `Soundboard-Setup-<version>.exe` from the Releases page.
+1. Grab the latest `SoundPipe-Setup-<version>.exe` from the [Releases page](https://github.com/ShalakZ/soundpipe/releases).
    - Windows SmartScreen will show "Unrecognized app" — the app isn't code-signed (yet). Click **More info → Run anyway**.
 2. Run the installer. Pick where to install, or accept the defaults.
-3. Launch Soundboard. The first-run wizard walks you through:
+3. Launch SoundPipe. The first-run wizard walks you through:
    - Installing **VB-CABLE** (auto-downloaded; will ask for admin permission, then reboot)
    - Picking which audio device the soundboard plays into (CABLE Input is auto-detected)
    - Configuring your game / Discord / OBS to listen to CABLE Output as their mic
@@ -43,7 +43,7 @@ Make sure the app's microphone is set to `CABLE Output (VB-Audio Virtual Cable)`
 **My own voice stopped being heard once I switched the mic**
 Setting Discord's mic to CABLE Output means Discord only hears what plays into CABLE Input — so your actual mic is gone. Two fixes:
 - **Quick**: right-click the Windows speaker icon → Sound settings → More sound settings → Recording tab → your mic → Properties → Listen tab → check **Listen to this device** and route playback to `CABLE Input`.
-- **Advanced**: install [VoiceMeeter Banana](https://vb-audio.com/Voicemeeter/banana.htm) and route your mic + Soundboard's CABLE Input through it. Soundboard supports mic ducking via VoiceMeeter (Settings → Mic ducking).
+- **Advanced**: install [VoiceMeeter Banana](https://vb-audio.com/Voicemeeter/banana.htm) and route your mic + SoundPipe's CABLE Input through it. SoundPipe supports mic ducking via VoiceMeeter (Settings → Mic ducking).
 
 **"CABLE Output" doesn't appear in my apps**
 Either VB-CABLE didn't finish installing or your machine needs a reboot. Re-run the setup wizard from Settings.

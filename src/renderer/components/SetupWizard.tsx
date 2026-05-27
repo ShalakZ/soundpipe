@@ -160,7 +160,7 @@ export function SetupWizard({ onClose }: Props) {
         <div className="text-sm">Launching installer (look for the Windows UAC prompt)…</div>
       ) : installState.kind === 'awaiting-user' ? (
         <Callout tone="info" title="Finish the VB-CABLE installer">
-          The VB-CABLE installer is now open. Click <strong className="text-text">Install Driver</strong>, then <strong className="text-text">reboot when prompted</strong>. After reboot, relaunch the soundboard — we'll pick up right here.
+          The VB-CABLE installer is now open. Click <strong className="text-text">Install Driver</strong>, then <strong className="text-text">reboot when prompted</strong>. After reboot, relaunch SoundPipe — we'll pick up right here.
         </Callout>
       ) : installState.kind === 'error' ? (
         <Callout tone="danger" title="Install failed">
@@ -270,7 +270,7 @@ export function SetupWizard({ onClose }: Props) {
       </p>
       <div className="flex justify-end">
         <Button variant="primary" onClick={() => void finishWizard()} autoFocus>
-          Open soundboard
+          Open SoundPipe
         </Button>
       </div>
     </>

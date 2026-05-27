@@ -48,7 +48,7 @@ const defaultState: AppState = {
 };
 
 const store = new Store<AppState>({
-  name: 'soundboard',
+  name: 'soundpipe',
   defaults: defaultState,
 });
 

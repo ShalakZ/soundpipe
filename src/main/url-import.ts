@@ -68,7 +68,7 @@ function downloadToFile(
   redirectsLeft = 5,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    httpsGet(url, { headers: { 'User-Agent': 'soundboard' } }, (res) => {
+    httpsGet(url, { headers: { 'User-Agent': 'soundpipe' } }, (res) => {
       if (
         (res.statusCode === 301 ||
           res.statusCode === 302 ||

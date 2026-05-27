@@ -278,11 +278,11 @@ export function App() {
         }
       }
       console.log(
-        `[soundboard] clip captured: ${audioBuffer.duration.toFixed(2)}s, peak=${peak.toFixed(4)}, channels=${audioBuffer.numberOfChannels}`,
+        `[soundpipe] clip captured: ${audioBuffer.duration.toFixed(2)}s, peak=${peak.toFixed(4)}, channels=${audioBuffer.numberOfChannels}`,
       );
       if (peak < 0.001) {
         console.warn(
-          '[soundboard] captured audio is silent — check the selected capture source.',
+          '[soundpipe] captured audio is silent — check the selected capture source.',
         );
       }
       const wavBytes = encodeWav(audioBuffer);
@@ -333,13 +333,13 @@ export function App() {
     <div className="h-full flex flex-col bg-bg text-text">
       <header className="flex items-center gap-3 px-4 py-3 border-b border-border bg-surface">
         <div className="flex items-baseline gap-1.5">
-          <h1 className="text-lg font-semibold">Soundboard</h1>
+          <h1 className="text-lg font-semibold">SoundPipe</h1>
           {appVersion && (
             <button
               type="button"
               onClick={() => void window.api.showAboutPanel()}
               className="text-[11px] text-muted font-mono hover:text-text transition-colors"
-              title="About Soundboard"
+              title="About SoundPipe"
             >
               v{appVersion}
             </button>
