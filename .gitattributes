@@ -1,0 +1,55 @@
+# Default: treat as text, let Git normalize line endings on checkin.
+# eol=lf forces LF in the working copy too, so files look identical on
+# WSL/Linux and Windows. Stops the "LF will be replaced by CRLF" warnings.
+* text=auto eol=lf
+
+# Source code — explicit LF.
+*.ts        text eol=lf
+*.tsx       text eol=lf
+*.js        text eol=lf
+*.jsx       text eol=lf
+*.mjs       text eol=lf
+*.cjs       text eol=lf
+*.json      text eol=lf
+*.md        text eol=lf
+*.css       text eol=lf
+*.scss      text eol=lf
+*.html      text eol=lf
+*.yaml      text eol=lf
+*.yml       text eol=lf
+*.toml      text eol=lf
+*.svg       text eol=lf
+.gitignore  text eol=lf
+.gitattributes text eol=lf
+
+# Windows-only scripts — must stay CRLF or PowerShell/cmd will choke.
+*.ps1       text eol=crlf
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+
+# Binary assets — never touch line endings or attempt diffs.
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.icns      binary
+*.exe       binary
+*.dll       binary
+*.zip       binary
+*.gz        binary
+*.7z        binary
+*.wav       binary
+*.mp3       binary
+*.ogg       binary
+*.flac      binary
+*.m4a       binary
+*.aac       binary
+*.webm      binary
+*.mp4       binary
+*.node      binary
+*.pdf       binary
+*.ttf       binary
+*.otf       binary
+*.woff      binary
+*.woff2     binary
