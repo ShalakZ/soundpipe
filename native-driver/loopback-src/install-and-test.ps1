@@ -62,28 +62,24 @@ Write-Host "`n=== 1. Trust the test cert ==="
 certutil -addstore -f Root $cer
 certutil -addstore -f TrustedPublisher $cer
 
-Write-Host "`n=== 2. Remove any previous instance + stale driver packages ==="
-& $devcon remove $hwid 2>$null
-Start-Sleep -Seconds 1
-# Delete any previously-published componentizedaudiosample.inf packages so the
-# freshly-built one is used (avoids an old buggy copy winning by driver ranking).
-$old = (pnputil /enum-drivers 2>$null | Out-String) -split "`r?`n`r?`n" |
-       Where-Object { $_ -match 'componentizedaudiosample\.inf' } |
-       ForEach-Object { if ($_ -match 'Published Name:\s*(oem\d+\.inf)') { $Matches[1] } }
-foreach ($o in $old) {
-    Write-Host "  deleting stale package $o"
-    pnputil /delete-driver $o /uninstall /force 2>$null
-}
-
-Write-Host "`n=== 2b. Install the freshly-built driver ==="
+Write-Host "`n=== 2. Install/update the driver IN PLACE (minimal churn) ==="
+# Register the extension + APO packages.
 pnputil /add-driver $extInf /install
 pnputil /add-driver $apoInf /install
-& $devcon install $baseInf $hwid
-
-Write-Host "`n=== 2c. Remove + reinstall base so endpoints light up ==="
-& $devcon remove $hwid 2>$null
-Start-Sleep -Seconds 1
-& $devcon install $baseInf $hwid
+# Update the base driver on the EXISTING device node in place. `devcon update` does
+# a single stop/start, vs the old remove+reinstall(+remove+reinstall) which churned
+# the audio streams hard - and stream teardown churn is exactly what triggers the
+# install-time BSOD race. `devcon update` with this explicit INF uses the fresh build
+# regardless of older packages in the store. If no device node exists yet (first-ever
+# install), create it.
+$exists = ((& $devcon findall $hwid 2>$null) | Select-String -SimpleMatch $hwid)
+if ($exists) {
+    Write-Host "  updating existing device in place (devcon update)"
+    & $devcon update $baseInf $hwid
+} else {
+    Write-Host "  no existing device - creating it (devcon install)"
+    & $devcon install $baseInf $hwid
+}
 
 Write-Host "`n=== 3. Clear stale cached endpoint formats + restart audio (Basic Session only!) ==="
 # Windows caches each endpoint's mix format and keeps it across reinstalls. After
@@ -111,5 +107,6 @@ Start-Service Audiosrv
 Write-Host "`n=== Audio endpoints ==="
 Get-PnpDevice -Class AudioEndpoint | Select-Object Status,FriendlyName | Format-Table -AutoSize
 
-Write-Host "`nDone. Now: set the SYSVAD Speaker as default playback, play a sound, and"
-Write-Host "record from the SYSVAD Mic In capture device - you should hear the played audio."
+Write-Host "`nDone. Expect two endpoints: 'SoundPipe' (speaker) and 'SoundPipe Virtual Mic'."
+Write-Host "If they don't appear above, just REBOOT once - they come up clean on boot."
+Write-Host "Then audio played into SoundPipe comes out SoundPipe Virtual Mic (48 kHz stereo)."
