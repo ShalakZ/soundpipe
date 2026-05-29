@@ -184,11 +184,57 @@ index 4e9e882..9c8fd86 100644
      VOID UpdatePosition
      (
          _In_ LARGE_INTEGER ilQPC
+diff --git a/audio/sysvad/EndpointsCommon/speakerwavtable.h b/audio/sysvad/EndpointsCommon/speakerwavtable.h
+index 6fb058a..4cf6a05 100644
+--- a/audio/sysvad/EndpointsCommon/speakerwavtable.h
++++ b/audio/sysvad/EndpointsCommon/speakerwavtable.h
+@@ -32,7 +32,7 @@ Abstract:
+ #define SPEAKER_OFFLOAD_MAX_CHANNELS                2       // Max Channels.
+ #define SPEAKER_OFFLOAD_MIN_BITS_PER_SAMPLE         16      // Min Bits Per Sample
+ #define SPEAKER_OFFLOAD_MAX_BITS_PER_SAMPLE         16      // Max Bits Per Sample
+-#define SPEAKER_OFFLOAD_MIN_SAMPLE_RATE             44100   // Min Sample Rate
++#define SPEAKER_OFFLOAD_MIN_SAMPLE_RATE             48000   // Min Sample Rate (SoundPipe: 48k only)
+ #define SPEAKER_OFFLOAD_MAX_SAMPLE_RATE             48000   // Max Sample Rate
+ 
+ #define SPEAKER_LOOPBACK_MAX_CHANNELS               SPEAKER_HOST_MAX_CHANNELS          // Must be equal to host pin's Max Channels.
+@@ -72,8 +72,8 @@ KSDATAFORMAT_WAVEFORMATEXTENSIBLE SpeakerAudioEngineSupportedDeviceFormats[] =
+             {
+                 WAVE_FORMAT_EXTENSIBLE,
+                 2,
+-                44100,
+-                176400,
++                48000,
++                192000,
+                 4,
+                 16,
+                 sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
+@@ -252,8 +252,8 @@ KSDATAFORMAT_WAVEFORMATEXTENSIBLE SpeakerHostPinSupportedDeviceFormats[] =
+             {
+                 WAVE_FORMAT_EXTENSIBLE,
+                 2,
+-                44100,
+-                176400,
++                48000,
++                192000,
+                 4,
+                 16,
+                 sizeof(WAVEFORMATEXTENSIBLE)-sizeof(WAVEFORMATEX)
+@@ -357,8 +357,8 @@ KSDATAFORMAT_WAVEFORMATEXTENSIBLE SpeakerOffloadPinSupportedDeviceFormats[] =
+             {
+                 WAVE_FORMAT_EXTENSIBLE,
+                 2,
+-                44100,
+-                176400,
++                48000,
++                192000,
+                 4,
+                 16,
+                 sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
 diff --git a/audio/sysvad/TabletAudioSample/micinwavtable.h b/audio/sysvad/TabletAudioSample/micinwavtable.h
-index 64acba0..4f4675a 100644
+index 64acba0..a9a507c 100644
 --- a/audio/sysvad/TabletAudioSample/micinwavtable.h
 +++ b/audio/sysvad/TabletAudioSample/micinwavtable.h
-@@ -18,7 +18,7 @@ Abstract:
+@@ -18,10 +18,10 @@ Abstract:
  //
  // Mic in (external: headphone) range.
  //
@@ -196,16 +242,153 @@ index 64acba0..4f4675a 100644
 +#define MICIN_DEVICE_MAX_CHANNELS           2       // Max Channels. (SoundPipe: stereo virtual mic)
  #define MICIN_MIN_BITS_PER_SAMPLE_PCM       16      // Min Bits Per Sample
  #define MICIN_MAX_BITS_PER_SAMPLE_PCM       16      // Max Bits Per Sample
- #define MICIN_MIN_SAMPLE_RATE               8000    // Min Sample Rate
-@@ -221,15 +221,15 @@ KSDATAFORMAT_WAVEFORMATEXTENSIBLE MicInPinSupportedDeviceFormats[] =
+-#define MICIN_MIN_SAMPLE_RATE               8000    // Min Sample Rate
++#define MICIN_MIN_SAMPLE_RATE               48000    // Min Sample Rate
+ #define MICIN_MAX_SAMPLE_RATE               48000   // Max Sample Rate
+ 
+ //
+@@ -33,7 +33,7 @@ Abstract:
+ static 
+ KSDATAFORMAT_WAVEFORMATEXTENSIBLE MicInPinSupportedDeviceFormats[] =
+ {
+-    { // 0
++    { // 48 kHz / 16-bit / STEREO - the ONLY SoundPipe Virtual Mic format
+         {
+             sizeof(KSDATAFORMAT_WAVEFORMATEXTENSIBLE),
+             0,
+@@ -46,190 +46,15 @@ KSDATAFORMAT_WAVEFORMATEXTENSIBLE MicInPinSupportedDeviceFormats[] =
          {
              {
                  WAVE_FORMAT_EXTENSIBLE,
 -                1,
--                48000,
--                96000,
+-                8000,
+-                16000,
                  2,
-+                48000,
+-                16,
+-                sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
+-            },
+-            16,
+-            KSAUDIO_SPEAKER_MONO,
+-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
+-        }
+-    },
+-    { // 1
+-        {
+-            sizeof(KSDATAFORMAT_WAVEFORMATEXTENSIBLE),
+-            0,
+-            0,
+-            0,
+-            STATICGUIDOF(KSDATAFORMAT_TYPE_AUDIO),
+-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM),
+-            STATICGUIDOF(KSDATAFORMAT_SPECIFIER_WAVEFORMATEX)
+-        },
+-        {
+-            {
+-                WAVE_FORMAT_EXTENSIBLE,
+-                1,
+-                11025,
+-                22050,
+-                2,
+-                16,
+-                sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
+-            },
+-            16,
+-            KSAUDIO_SPEAKER_MONO,
+-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
+-        }
+-    },
+-    { // 2
+-        {
+-            sizeof(KSDATAFORMAT_WAVEFORMATEXTENSIBLE),
+-            0,
+-            0,
+-            0,
+-            STATICGUIDOF(KSDATAFORMAT_TYPE_AUDIO),
+-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM),
+-            STATICGUIDOF(KSDATAFORMAT_SPECIFIER_WAVEFORMATEX)
+-        },
+-        {
+-            {
+-                WAVE_FORMAT_EXTENSIBLE,
+-                1,
+-                16000,
+-                32000,
+-                2,
+-                16,
+-                sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
+-            },
+-            16,
+-            KSAUDIO_SPEAKER_MONO,
+-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
+-        }
+-    },
+-    { // 3
+-        {
+-            sizeof(KSDATAFORMAT_WAVEFORMATEXTENSIBLE),
+-            0,
+-            0,
+-            0,
+-            STATICGUIDOF(KSDATAFORMAT_TYPE_AUDIO),
+-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM),
+-            STATICGUIDOF(KSDATAFORMAT_SPECIFIER_WAVEFORMATEX)
+-        },
+-        {
+-            {
+-                WAVE_FORMAT_EXTENSIBLE,
+-                1,
+-                22050,
+-                44100,
+-                2,
+-                16,
+-                sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
+-            },
+-            16,
+-            KSAUDIO_SPEAKER_MONO,
+-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
+-        }
+-    },
+-    { // 4
+-        {
+-            sizeof(KSDATAFORMAT_WAVEFORMATEXTENSIBLE),
+-            0,
+-            0,
+-            0,
+-            STATICGUIDOF(KSDATAFORMAT_TYPE_AUDIO),
+-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM),
+-            STATICGUIDOF(KSDATAFORMAT_SPECIFIER_WAVEFORMATEX)
+-        },
+-        {
+-            {
+-                WAVE_FORMAT_EXTENSIBLE,
+-                1,
+-                24000,
+                 48000,
+-                2,
+-                16,
+-                sizeof(WAVEFORMATEXTENSIBLE)-sizeof(WAVEFORMATEX)
+-            },
+-            16,
+-            KSAUDIO_SPEAKER_MONO,
+-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
+-        }
+-    },
+-    { // 5
+-        {
+-            sizeof(KSDATAFORMAT_WAVEFORMATEXTENSIBLE),
+-            0,
+-            0,
+-            0,
+-            STATICGUIDOF(KSDATAFORMAT_TYPE_AUDIO),
+-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM),
+-            STATICGUIDOF(KSDATAFORMAT_SPECIFIER_WAVEFORMATEX)
+-        },
+-        {
+-            {
+-                WAVE_FORMAT_EXTENSIBLE,
+-                1,
+-                32000,
+-                64000,
+-                2,
 +                192000,
 +                4,
                  16,
@@ -213,11 +396,61 @@ index 64acba0..4f4675a 100644
              },
              16,
 -            KSAUDIO_SPEAKER_MONO,
+-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
+-        }
+-    },
+-    { // 6
+-        {
+-            sizeof(KSDATAFORMAT_WAVEFORMATEXTENSIBLE),
+-            0,
+-            0,
+-            0,
+-            STATICGUIDOF(KSDATAFORMAT_TYPE_AUDIO),
+-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM),
+-            STATICGUIDOF(KSDATAFORMAT_SPECIFIER_WAVEFORMATEX)
+-        },
+-        {
+-            {
+-                WAVE_FORMAT_EXTENSIBLE,
+-                1,
+-                44100,
+-                88200,
+-                2,
+-                16,
+-                sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
+-            },
+-            16,
+-            KSAUDIO_SPEAKER_MONO,
+-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
+-        }
+-    },
+-    { // 7
+-        {
+-            sizeof(KSDATAFORMAT_WAVEFORMATEXTENSIBLE),
+-            0,
+-            0,
+-            0,
+-            STATICGUIDOF(KSDATAFORMAT_TYPE_AUDIO),
+-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM),
+-            STATICGUIDOF(KSDATAFORMAT_SPECIFIER_WAVEFORMATEX)
+-        },
+-        {
+-            {
+-                WAVE_FORMAT_EXTENSIBLE,
+-                1,
+-                48000,
+-                96000,
+-                2,
+-                16,
+-                sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
+-            },
+-            16,
+-            KSAUDIO_SPEAKER_MONO,
 +            KSAUDIO_SPEAKER_STEREO,
              STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
          }
      }
-@@ -251,15 +251,18 @@ MODE_AND_DEFAULT_FORMAT MicInPinSupportedDeviceModes[] =
+@@ -251,15 +76,18 @@ MODE_AND_DEFAULT_FORMAT MicInPinSupportedDeviceModes[] =
      },
      {
          STATIC_AUDIO_SIGNALPROCESSINGMODE_SPEECH,

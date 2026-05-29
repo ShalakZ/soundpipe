@@ -2,6 +2,11 @@
 
 Newest entry first. Short, plain-English status on every push — for the user and the host-side Claude, not a code changelog.
 
+## 2026-05-29 — Format locked to 48 kHz stereo + suite architecture written ✅
+- **Fixed the "mono / 44100" default** Ziad caught. The mic now advertises **only** 48 kHz / 16-bit / stereo (one format, nothing else), and the speaker now defaults to 48 kHz too. Confirmed on a fresh install: both endpoints came up **48 kHz stereo automatically** (no manual "Advanced tab" step — the installer's cache-clear handles it), and the loopback is still clean (left=440 / right=880 fully separated). No BSOD. This is what makes a friend's clean install "just work."
+- **Wrote `native-driver/SUITE-ARCHITECTURE.md`** — the plan to grow SoundPipe into a full voice suite (soundboard + noise gate + compressor + EQ + pitch/auto-tune + mixer). Key principle: keep the **kernel driver a dumb, stable "cable"** (done) and put all features in the **user-mode app** (safe, fast). Keystone feature = **mixer mode** (real mic + clips → effects → virtual mic). Effects are well-trodden DSP blocks. Signing (~$300/yr) is the gate to real PCs.
+- **Next:** start **mixer-mode groundwork** in the app (capture real mic + soundboard → render into "SoundPipe" speaker). Then one effect end-to-end (noise gate) to prove the DSP slot + latency.
+
 ## 2026-05-29 — Phase 2: down to TWO branded endpoints, verified ✅
 - **Slimmed to exactly two endpoints** (was 8 kitchen-sink): one render + one capture. Windows now shows just **"SoundPipe Virtual Mic (SoundPipe)"** and **"Speakers (SoundPipe)"**.
 - **Rebranded** the names via the driver's INF source (`.inx`): device + endpoints now say SoundPipe / SoundPipe Virtual Mic. (The speaker endpoint still shows Windows' default word "Speakers" before the "(SoundPipe)" — it needs a custom name tag like the mic has; small cosmetic follow-up.)
