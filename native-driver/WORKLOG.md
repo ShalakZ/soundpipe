@@ -2,6 +2,11 @@
 
 Newest entry first. Short, plain-English status on every push — for the user and the host-side Claude, not a code changelog.
 
+## 2026-05-29 — Consistency resolved: gentle install = no BSOD + pristine audio ✅
+- **Fixed install reliability.** Reworked the installer to update the driver **in place** (single `devcon update`) instead of the old double remove+reinstall churn. Ran it: **no BSOD**, both endpoints back, loopback **pristine on both channels** again (L 440 / R 880, ~0.15 each, no cross-talk across repeated grabs). The earlier "degraded left channel" was just the messy half-finished-install state — a clean install restores it.
+- So **runtime is correct + consistent, and the gentle install is reliable.** The deep teardown-race fix (a 100% no-BSOD guarantee across many install/uninstall cycles on a friend's PC) is still the real-PC / signing-phase task.
+- **Known cosmetic:** speaker still shows "Speakers (SoundPipe)" (its custom-name registration isn't applying via devcon update); unmistakably SoundPipe, deferred rather than burn more install cycles. Mic is correctly "SoundPipe Virtual Mic"; manufacturer is SoundPipe.
+
 ## 2026-05-29 — KNOWN ISSUE: install-churn teardown race (BSOD during repeated reinstalls)
 - Re-running the installer again BSOD'd (0xD1 in TimerNotifyRT, use-after-free: a stream freed mid-install-churn, timer tick fired on reused memory). This is **install/uninstall-time only** — the driver is **stable once running** (loopback proven repeatedly incl. a 2.5-min soak, no runtime crashes).
 - Root: the sysvad sample's stream teardown vs its 1 ms timer is racy under heavy PnP churn. My destructor timer-drain fixed the common NULL case; this rarer reused-memory case isn't fully closed. The install script's aggressive double remove+reinstall (step 2c) maximizes the churn that triggers it.
