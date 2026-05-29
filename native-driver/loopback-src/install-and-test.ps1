@@ -85,8 +85,27 @@ Write-Host "`n=== 2c. Remove + reinstall base so endpoints light up ==="
 Start-Sleep -Seconds 1
 & $devcon install $baseInf $hwid
 
-Write-Host "`n=== 3. Restart AudioEndpointBuilder (Basic Session only!) ==="
-Restart-Service AudioEndpointBuilder -Force
+Write-Host "`n=== 3. Clear stale cached endpoint formats + restart audio (Basic Session only!) ==="
+# Windows caches each endpoint's mix format and keeps it across reinstalls. After
+# changing the driver's formats (e.g. mono->stereo, 44100->48000) the old format
+# sticks until cleared. Stop the audio service, delete the cached DeviceFormat for
+# our endpoints so AudioEndpointBuilder re-reads the driver's 48kHz-stereo default.
+$DEVFMT = '{f19f064d-082c-4e27-bc73-6882a1bb8e4c},0'
+$NAMEKEY = '{a45c254e-df1c-4efd-8020-67d146a850e0},2'
+Stop-Service AudioEndpointBuilder -Force   # also stops Audiosrv (dependent)
+foreach ($flow in 'Render','Capture') {
+    $b = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\$flow"
+    Get-ChildItem $b -ErrorAction SilentlyContinue | ForEach-Object {
+        $props = Join-Path $_.PSPath 'Properties'
+        $name = (Get-ItemProperty $props -Name $NAMEKEY -ErrorAction SilentlyContinue).$NAMEKEY
+        if ($name -match 'SoundPipe|SYSVAD|Speakers|Microphone|SinkDescription|SPDIF|Headphones') {
+            Remove-ItemProperty $props -Name $DEVFMT -ErrorAction SilentlyContinue
+            Write-Host "  cleared cached format: $name"
+        }
+    }
+}
+Start-Service AudioEndpointBuilder
+Start-Service Audiosrv
 
 Write-Host "`n=== Audio endpoints ==="
 Get-PnpDevice -Class AudioEndpoint | Select-Object Status,FriendlyName | Format-Table -AutoSize

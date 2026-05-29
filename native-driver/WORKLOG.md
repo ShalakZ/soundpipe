@@ -2,6 +2,14 @@
 
 Newest entry first. Short, plain-English status on every push — for the user and the host-side Claude, not a code changelog.
 
+## 2026-05-29 — Phase 2: down to TWO branded endpoints, verified ✅
+- **Slimmed to exactly two endpoints** (was 8 kitchen-sink): one render + one capture. Windows now shows just **"SoundPipe Virtual Mic (SoundPipe)"** and **"Speakers (SoundPipe)"**.
+- **Rebranded** the names via the driver's INF source (`.inx`): device + endpoints now say SoundPipe / SoundPipe Virtual Mic. (The speaker endpoint still shows Windows' default word "Speakers" before the "(SoundPipe)" — it needs a custom name tag like the mic has; small cosmetic follow-up.)
+- **Locked to 48 kHz stereo**, and the **installer now auto-clears Windows' cached endpoint format**, so the right format applies on install with **no manual Advanced-tab fiddling** (that was the friction we hit by hand earlier — now automatic, important for a friend's install).
+- **Re-verified end-to-end** (I measure it, since audio can't be heard in the VM): only one capture device present, 48 kHz stereo, and the left=440 / right=880 test came back perfectly channel-separated. No BSOD on install.
+- Heads-up for later: the green level meters in Windows sit at a constant ~50% for both endpoints — that's the sysvad **simulated peak meter** (fake), not a real signal indicator; cosmetic only, can be wired to the real pipe level later.
+- **Next:** (optional) custom name so the speaker reads exactly "SoundPipe"; remove the now-unused phone/tablet/BT/USB/keyword code; then **mixer mode** (blend real mic + soundboard) and wiring into the SoundPipe app. Signing (~$300/yr) remains the gate for installing on a real PC. Still $0.
+
 ## 2026-05-29 — Stereo virtual mic PROVEN + BSOD root-caused & fixed ✅
 - **Stereo loopback works.** Made the virtual mic 48 kHz / 16-bit **stereo** (was mono) and switched the in-kernel pipe from down-mixing to straight stereo passthrough. Verified by playing a tone that's **440 Hz in the left channel, 880 Hz in the right** into the SoundPipe speaker and recording the mic: left came back as pure 440, right as pure 880, fully separated. So stereo is preserved end-to-end (VoiceMeeter-style), and audio→mic still works.
 - **The BSODs are root-caused and fixed.** The crashes (bugcheck 0xD1, both identical) were a real ordering bug in the *sample's* stream-cleanup code: it released the audio "miniport" object **before** stopping the timer that uses it, so a timer tick landing mid-teardown dereferenced a freed pointer. Confirmed with the kernel debugger (faulting function `TimerNotifyRT`, our driver). Fixed by stopping/draining the timer **first**, plus a safety null-check. Reinstalled with no crash, including the device swap that used to trip it.

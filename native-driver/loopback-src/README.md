@@ -33,6 +33,15 @@ During testing only one render + one capture device should be active. Producer =
 SYSVAD Speaker (48 kHz stereo, downmixed); consumer = SYSVAD Mic In (48 kHz mono,
 already the default — no format edits needed).
 
+## Phase 2 changes (slim + brand + stereo)
+- `minipairs.h` — trimmed `g_RenderEndpoints`/`g_CaptureEndpoints` to **one each** (Speaker + MicIn) → exactly two endpoints.
+- `micinwavtable.h` — mic is **48 kHz / 16-bit / stereo** (all signal-processing modes resolve to the 48 kHz stereo format).
+- **Rebrand** (in the UTF-16 `.inx` source, so not shown in `loopback.patch` — see `loopback.patch.stat`):
+  - `ComponentizedAudioSample.inx`: WaveSpeaker/TopologySpeaker szPname → `SoundPipe`; WaveMicIn/TopologyMicIn szPname and `MicInCustomName` → `SoundPipe Virtual Mic`; DeviceDesc → `SoundPipe Audio Device`.
+  - `ComponentizedAudioSampleExtension.inx`: `ExtendedFriendlyName` → `SoundPipe`.
+  - Result: endpoints show as **SoundPipe Virtual Mic (SoundPipe)** and **Speakers (SoundPipe)**. (Speaker keeps Windows' default "Speakers" pin name; giving it a custom name tag like the mic is a small follow-up.)
+- `install-and-test.ps1` — now **clears the cached endpoint format** (MMDevices `DeviceFormat`) so the 48 kHz stereo default applies automatically (no manual Advanced-tab step).
+
 ## Build / install
 - Build (in the VM, EWDK at D:): `SignMode=Off` so the unsigned `.sys` survives
   the known `DrvCat` task failure; the catalog is then signed manually.

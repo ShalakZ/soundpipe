@@ -239,6 +239,40 @@ index 64acba0..4f4675a 100644
      },
  };
  
+diff --git a/audio/sysvad/TabletAudioSample/minipairs.h b/audio/sysvad/TabletAudioSample/minipairs.h
+index 0d00f5a..d66562e 100644
+--- a/audio/sysvad/TabletAudioSample/minipairs.h
++++ b/audio/sysvad/TabletAudioSample/minipairs.h
+@@ -507,12 +507,9 @@ ENDPOINT_MINIPAIR MicArray3Miniports =
+ // Render miniport pairs.
+ //
+ static
+-PENDPOINT_MINIPAIR  g_RenderEndpoints[] = 
++PENDPOINT_MINIPAIR  g_RenderEndpoints[] =
+ {
+-    &SpeakerMiniports,
+-    &SpeakerHpMiniports,
+-    &HdmiMiniports,
+-    &SpdifMiniports,
++    &SpeakerMiniports,          // SoundPipe (the only render endpoint - Phase 2)
+ };
+ 
+ #define g_cRenderEndpoints  (SIZEOF_ARRAY(g_RenderEndpoints))
+@@ -522,12 +519,9 @@ PENDPOINT_MINIPAIR  g_RenderEndpoints[] =
+ // Capture miniport pairs.
+ //
+ static
+-PENDPOINT_MINIPAIR  g_CaptureEndpoints[] = 
++PENDPOINT_MINIPAIR  g_CaptureEndpoints[] =
+ {
+-    &MicInMiniports,
+-    &MicArray1Miniports,
+-    &MicArray2Miniports,
+-    &MicArray3Miniports,
++    &MicInMiniports,            // SoundPipe Virtual Mic (the only capture endpoint - Phase 2)
+ };
+ 
+ #define g_cCaptureEndpoints (SIZEOF_ARRAY(g_CaptureEndpoints))
 diff --git a/audio/sysvad/adapter.cpp b/audio/sysvad/adapter.cpp
 index 0f44c59..5ad91ba 100644
 --- a/audio/sysvad/adapter.cpp
