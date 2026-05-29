@@ -36,6 +36,13 @@ if (-not $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     throw "Not elevated. Re-run this script from an Administrator PowerShell."
 }
 
+# The EWDK ISO (D:) gets unmounted on reboot - remount it if needed so devcon
+# (and signing tools) are available.
+if (-not (Test-Path "D:\")) {
+    $iso = Get-ChildItem "C:\Users\User\Downloads\EWDK_*.iso" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($iso) { Write-Host "Mounting EWDK ISO..."; Mount-DiskImage -ImagePath $iso.FullName | Out-Null; Start-Sleep -Seconds 2 }
+}
+
 # Locate the x64 devcon (root-enumerated software device needs devcon, not
 # pnputil, to create the devnode). Must be the x64 build for this x64 VM - an
 # arm64 devcon.exe will fail with "not a valid application for this OS platform".

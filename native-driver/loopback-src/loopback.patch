@@ -11,7 +11,7 @@ index c1ba8b1..ff8c024 100644
      <ClCompile Include="bthhfpminwavert.cpp" />
      <ClCompile Include="bthhfpspeakertopo.cpp" />
 diff --git a/audio/sysvad/EndpointsCommon/minwavertstream.cpp b/audio/sysvad/EndpointsCommon/minwavertstream.cpp
-index adea0c8..f5d316b 100644
+index adea0c8..624955e 100644
 --- a/audio/sysvad/EndpointsCommon/minwavertstream.cpp
 +++ b/audio/sysvad/EndpointsCommon/minwavertstream.cpp
 @@ -6,6 +6,7 @@
@@ -22,7 +22,50 @@ index adea0c8..f5d316b 100644
  #define MINWAVERTSTREAM_POOLTAG 'SRWM'
  
  #pragma warning (disable : 4127)
-@@ -1469,6 +1470,12 @@ VOID CMiniportWaveRTStream::UpdatePosition
+@@ -35,6 +36,19 @@ Return Value:
+ --*/
+ {
+     PAGED_CODE();
++
++    // SoundPipe: drain the notification timer + its DPC BEFORE tearing anything
++    // down. Stock sysvad deleted this timer LAST, after releasing/nulling
++    // m_pMiniport - so an in-flight TimerNotifyRT could dereference the now-null
++    // m_pMiniport and bugcheck 0xD1 (seen during endpoint enumeration). Cancel +
++    // wait here guarantees no DPC is running past this point.
++    if (m_pNotificationTimer)
++    {
++        ExDeleteTimer(m_pNotificationTimer, TRUE, TRUE, NULL);
++        m_pNotificationTimer = NULL;
++    }
++    KeFlushQueuedDpcs();
++
+     if (NULL != m_pMiniport)
+     {
+         if (m_pAudioModules)
+@@ -89,21 +103,7 @@ Return Value:
+         ExFreePoolWithTag( m_pWfExt, MINWAVERTSTREAM_POOLTAG );
+         m_pWfExt = NULL;
+     }
+-    if (m_pNotificationTimer)
+-    {
+-        ExDeleteTimer
+-        (
+-            m_pNotificationTimer, 
+-            TRUE, // Cancel the timer if it is currently set.
+-            TRUE, // Wait for the timer to finish expiring and for any callback to a ExTimerCallback routine to finish.
+-            NULL
+-         );
+-    }
+-
+-    // Since we just cancelled the notification timer, wait for all queued 
+-    // DPCs to complete before we free the notification DPC.
+-    //
+-    KeFlushQueuedDpcs();
++    // (Notification timer was already drained at the top of this destructor.)
+ 
+ #ifdef SYSVAD_BTH_BYPASS
+     ASSERT(m_SidebandOpen == FALSE);
+@@ -1469,6 +1469,12 @@ VOID CMiniportWaveRTStream::UpdatePosition
                                          0);
          }
  
@@ -35,7 +78,7 @@ index adea0c8..f5d316b 100644
          if (!g_DoNotCreateDataFiles)
          {
              // Read from buffer and write to a file.
-@@ -1509,6 +1516,11 @@ ByteDisplacement - # of bytes to process.
+@@ -1509,6 +1515,11 @@ ByteDisplacement - # of bytes to process.
  
  --*/
  {
@@ -47,7 +90,7 @@ index adea0c8..f5d316b 100644
      ULONG bufferOffset = m_ullLinearPosition % m_ulDmaBufferSize;
  
      // Normally this will loop no more than once for a single wrap, but if
-@@ -1516,7 +1528,10 @@ ByteDisplacement - # of bytes to process.
+@@ -1516,7 +1527,10 @@ ByteDisplacement - # of bytes to process.
      while (ByteDisplacement > 0)
      {
          ULONG runWrite = min(ByteDisplacement, m_ulDmaBufferSize - bufferOffset);
@@ -59,7 +102,7 @@ index adea0c8..f5d316b 100644
          bufferOffset = (bufferOffset + runWrite) % m_ulDmaBufferSize;
          ByteDisplacement -= runWrite;
      }
-@@ -1553,6 +1568,48 @@ ByteDisplacement - # of bytes to process.
+@@ -1553,6 +1567,48 @@ ByteDisplacement - # of bytes to process.
      }
  }
  
@@ -108,6 +151,20 @@ index adea0c8..f5d316b 100644
  //=============================================================================
  #pragma code_seg("PAGE")
  STDMETHODIMP_(NTSTATUS) 
+@@ -1775,6 +1831,13 @@ TimerNotifyRT
+         goto End;
+     }
+ 
++    // SoundPipe: defense-in-depth - if the stream is tearing down (miniport
++    // already released) bail before any m_pMiniport dereference below.
++    if (NULL == _this->m_pMiniport)
++    {
++        goto End;
++    }
++
+     _this->UpdatePosition(qpc);
+ 
+     if (!_this->m_bEoSReceived)
 diff --git a/audio/sysvad/EndpointsCommon/minwavertstream.h b/audio/sysvad/EndpointsCommon/minwavertstream.h
 index 4e9e882..9c8fd86 100644
 --- a/audio/sysvad/EndpointsCommon/minwavertstream.h
@@ -127,6 +184,61 @@ index 4e9e882..9c8fd86 100644
      VOID UpdatePosition
      (
          _In_ LARGE_INTEGER ilQPC
+diff --git a/audio/sysvad/TabletAudioSample/micinwavtable.h b/audio/sysvad/TabletAudioSample/micinwavtable.h
+index 64acba0..4f4675a 100644
+--- a/audio/sysvad/TabletAudioSample/micinwavtable.h
++++ b/audio/sysvad/TabletAudioSample/micinwavtable.h
+@@ -18,7 +18,7 @@ Abstract:
+ //
+ // Mic in (external: headphone) range.
+ //
+-#define MICIN_DEVICE_MAX_CHANNELS           1       // Max Channels.
++#define MICIN_DEVICE_MAX_CHANNELS           2       // Max Channels. (SoundPipe: stereo virtual mic)
+ #define MICIN_MIN_BITS_PER_SAMPLE_PCM       16      // Min Bits Per Sample
+ #define MICIN_MAX_BITS_PER_SAMPLE_PCM       16      // Max Bits Per Sample
+ #define MICIN_MIN_SAMPLE_RATE               8000    // Min Sample Rate
+@@ -221,15 +221,15 @@ KSDATAFORMAT_WAVEFORMATEXTENSIBLE MicInPinSupportedDeviceFormats[] =
+         {
+             {
+                 WAVE_FORMAT_EXTENSIBLE,
+-                1,
+-                48000,
+-                96000,
+                 2,
++                48000,
++                192000,
++                4,
+                 16,
+                 sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
+             },
+             16,
+-            KSAUDIO_SPEAKER_MONO,
++            KSAUDIO_SPEAKER_STEREO,
+             STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
+         }
+     }
+@@ -251,15 +251,18 @@ MODE_AND_DEFAULT_FORMAT MicInPinSupportedDeviceModes[] =
+     },
+     {
+         STATIC_AUDIO_SIGNALPROCESSINGMODE_SPEECH,
+-        &MicInPinSupportedDeviceFormats[2].DataFormat, // 16KHz
++        // SoundPipe: keep every mode on the 48kHz stereo format so the loopback
++        // consumer always matches the (48kHz stereo) render producer - no rate
++        // mismatch (wrong pitch) and no mono fallback.
++        &MicInPinSupportedDeviceFormats[SIZEOF_ARRAY(MicInPinSupportedDeviceFormats) - 1].DataFormat,
+     },
+     {
+         STATIC_AUDIO_SIGNALPROCESSINGMODE_COMMUNICATIONS,
+-        &MicInPinSupportedDeviceFormats[4].DataFormat, // 24KHz
++        &MicInPinSupportedDeviceFormats[SIZEOF_ARRAY(MicInPinSupportedDeviceFormats) - 1].DataFormat,
+     },
+     {
+         STATIC_AUDIO_SIGNALPROCESSINGMODE_FAR_FIELD_SPEECH,
+-        &MicInPinSupportedDeviceFormats[2].DataFormat, // 16KHz
++        &MicInPinSupportedDeviceFormats[SIZEOF_ARRAY(MicInPinSupportedDeviceFormats) - 1].DataFormat,
+     },
+ };
+ 
 diff --git a/audio/sysvad/adapter.cpp b/audio/sysvad/adapter.cpp
 index 0f44c59..5ad91ba 100644
 --- a/audio/sysvad/adapter.cpp

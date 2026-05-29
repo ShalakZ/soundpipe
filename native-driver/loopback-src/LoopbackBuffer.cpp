@@ -6,13 +6,15 @@ Module Name:
 
 Abstract:
 
-    SoundPipe Phase 1b - loopback bridge implementation. See LoopbackBuffer.h.
+    SoundPipe Phase 1b loopback bridge. See LoopbackBuffer.h.
 
     A single global byte FIFO (NonPagedPool) guarded by a spin lock. Producer =
-    any render stream; consumer = any capture stream. The FIFO always stores
-    mono 16-bit PCM; stereo producers are downmixed (avg L/R) on write. The ring
-    stays sample-aligned (whole 16-bit samples) so the consumer never reads a
-    half-sample-shifted stream. Underrun -> silence; overflow -> drop oldest.
+    any render stream; consumer = any capture stream. The FIFO holds the SoundPipe
+    canonical format: 48 kHz / 16-bit / STEREO (4-byte frames). Render producers
+    are stereo, so audio passes through unchanged; a mono producer (rare) is
+    up-mixed to stereo so the FIFO stays stereo and frame-aligned. The ring stays
+    4-byte-frame aligned so the consumer never reads channel/sample-shifted data.
+    Underrun -> silence; overflow -> drop oldest.
 
 --*/
 
@@ -21,23 +23,24 @@ Abstract:
 
 #define LOOPBACK_POOLTAG 'BLPS'   // "SPLB" - SoundPipe LoopBack
 
-// ~170 ms of 48 kHz / 16-bit / mono audio (48000 * 2 * 0.17). Even number so the
-// ring stays 16-bit-sample aligned. Size is not critical: bigger = more latency
-// and more tolerance to clock drift between the two independent 1 ms timers.
+// ~85 ms of 48 kHz / 16-bit / stereo audio. Multiple of 4 so the ring stays
+// stereo-frame aligned. Size is not critical: bigger = more latency and more
+// tolerance to clock drift between the two independent 1 ms timers.
 #define LOOPBACK_CAPACITY  (16 * 1024)
+#define LOOPBACK_FRAME      4         // stereo 16-bit frame size in bytes
 
 typedef struct _LOOPBACK_FIFO
 {
-    BYTE*       Buffer;         // ring storage (mono 16-bit), NonPagedPool
-    ULONG       Capacity;       // size of Buffer in bytes (even)
-    ULONG       Head;           // write offset (even)
-    ULONG       Tail;           // read offset (even)
-    ULONG       Count;          // bytes currently stored (even)
+    BYTE*       Buffer;         // ring storage (stereo 16-bit), NonPagedPool
+    ULONG       Capacity;       // size of Buffer in bytes (multiple of 4)
+    ULONG       Head;           // write offset (multiple of 4)
+    ULONG       Tail;           // read offset (multiple of 4)
+    ULONG       Count;          // bytes currently stored (multiple of 4)
     KSPIN_LOCK  Lock;
     BOOLEAN     Initialized;
 
-    // Producer-side carry for an incomplete stereo frame (a stereo 16-bit frame
-    // is 4 bytes; a write chunk may end mid-frame). Holds 0..3 leftover bytes.
+    // Producer-side carry for an incomplete input frame held across calls.
+    // Stereo: 0..3 leftover bytes of a 4-byte frame. Mono: 0..1 leftover byte.
     BYTE        Carry[4];
     ULONG       CarryBytes;
 } LOOPBACK_FIFO;
@@ -58,7 +61,7 @@ NTSTATUS LoopbackBuffer_Init(void)
         return STATUS_INSUFFICIENT_RESOURCES;
     }
 
-    g_Loopback.Capacity    = LOOPBACK_CAPACITY;
+    g_Loopback.Capacity     = LOOPBACK_CAPACITY;
     g_Loopback.Head         = 0;
     g_Loopback.Tail         = 0;
     g_Loopback.Count        = 0;
@@ -85,8 +88,8 @@ VOID LoopbackBuffer_Cleanup(void)
 }
 
 //=============================================================================
-// Push raw mono 16-bit bytes into the ring (caller holds the lock). On overflow,
-// drop the oldest bytes to make room. ByteCount is assumed even.
+// Push raw bytes into the ring (caller holds the lock). On overflow, drop the
+// oldest bytes to make room. ByteCount is assumed a multiple of LOOPBACK_FRAME.
 #pragma code_seg()
 static VOID PushLocked(_In_reads_bytes_(ByteCount) const BYTE* Src, _In_ ULONG ByteCount)
 {
@@ -123,22 +126,6 @@ static VOID PushLocked(_In_reads_bytes_(ByteCount) const BYTE* Src, _In_ ULONG B
 }
 
 //=============================================================================
-// Downmix one interleaved stereo 16-bit frame (4 bytes) to one mono sample
-// (2 bytes) and push it (caller holds the lock).
-#pragma code_seg()
-static VOID PushStereoFrameLocked(_In_reads_bytes_(4) const BYTE* Frame)
-{
-    SHORT left  = (SHORT)(Frame[0] | (Frame[1] << 8));
-    SHORT right = (SHORT)(Frame[2] | (Frame[3] << 8));
-    SHORT mono  = (SHORT)(((LONG)left + (LONG)right) / 2);
-
-    BYTE out[2];
-    out[0] = (BYTE)(mono & 0xFF);
-    out[1] = (BYTE)((mono >> 8) & 0xFF);
-    PushLocked(out, 2);
-}
-
-//=============================================================================
 #pragma code_seg()
 VOID LoopbackBuffer_Write(_In_reads_bytes_(ByteCount) const BYTE* Src, _In_ ULONG ByteCount, _In_ USHORT SrcChannels)
 {
@@ -159,36 +146,31 @@ VOID LoopbackBuffer_Write(_In_reads_bytes_(ByteCount) const BYTE* Src, _In_ ULON
 
     if (SrcChannels >= 2)
     {
-        // Stereo (or more, but treat as stereo): downmix L/R to mono, frame by
-        // frame, carrying any partial 4-byte frame across calls.
-        const ULONG frameSize = 4; // 2 channels * 16-bit
-
-        // 1) Complete a carried partial frame first.
+        // Stereo passthrough: the FIFO is already stereo, so copy 4-byte frames
+        // straight through, carrying any partial frame across calls.
         if (g_Loopback.CarryBytes > 0)
         {
-            ULONG need = frameSize - g_Loopback.CarryBytes;
+            ULONG need = LOOPBACK_FRAME - g_Loopback.CarryBytes;
             ULONG take = MIN(need, ByteCount);
             RtlCopyMemory(g_Loopback.Carry + g_Loopback.CarryBytes, Src, take);
             g_Loopback.CarryBytes += take;
             Src       += take;
             ByteCount -= take;
-
-            if (g_Loopback.CarryBytes == frameSize)
+            if (g_Loopback.CarryBytes == LOOPBACK_FRAME)
             {
-                PushStereoFrameLocked(g_Loopback.Carry);
+                PushLocked(g_Loopback.Carry, LOOPBACK_FRAME);
                 g_Loopback.CarryBytes = 0;
             }
         }
 
-        // 2) Process all complete frames in the remaining input.
-        while (ByteCount >= frameSize)
+        ULONG whole = ByteCount & ~3u;   // largest multiple of 4
+        if (whole > 0)
         {
-            PushStereoFrameLocked(Src);
-            Src       += frameSize;
-            ByteCount -= frameSize;
+            PushLocked(Src, whole);
+            Src       += whole;
+            ByteCount -= whole;
         }
 
-        // 3) Stash any leftover bytes (< 1 frame) for the next call.
         if (ByteCount > 0)
         {
             RtlCopyMemory(g_Loopback.Carry, Src, ByteCount);
@@ -197,9 +179,35 @@ VOID LoopbackBuffer_Write(_In_reads_bytes_(ByteCount) const BYTE* Src, _In_ ULON
     }
     else
     {
-        // Mono already matches the FIFO format. Push whole 16-bit samples; drop a
-        // trailing odd byte (negligible, keeps the ring sample-aligned).
-        PushLocked(Src, ByteCount & ~1u);
+        // Mono producer (rare - render endpoints are stereo): up-mix each 16-bit
+        // mono sample to a stereo frame (L = R) so the FIFO stays stereo. Carry a
+        // trailing odd byte (half a mono sample) across calls.
+        BYTE frame[LOOPBACK_FRAME];
+
+        if (g_Loopback.CarryBytes == 1 && ByteCount > 0)
+        {
+            frame[0] = g_Loopback.Carry[0]; frame[1] = Src[0];
+            frame[2] = g_Loopback.Carry[0]; frame[3] = Src[0];
+            PushLocked(frame, LOOPBACK_FRAME);
+            Src       += 1;
+            ByteCount -= 1;
+            g_Loopback.CarryBytes = 0;
+        }
+
+        while (ByteCount >= 2)
+        {
+            frame[0] = Src[0]; frame[1] = Src[1];
+            frame[2] = Src[0]; frame[3] = Src[1];
+            PushLocked(frame, LOOPBACK_FRAME);
+            Src       += 2;
+            ByteCount -= 2;
+        }
+
+        if (ByteCount == 1)
+        {
+            g_Loopback.Carry[0]   = Src[0];
+            g_Loopback.CarryBytes = 1;
+        }
     }
 
     KeReleaseSpinLock(&g_Loopback.Lock, oldIrql);
@@ -221,9 +229,9 @@ VOID LoopbackBuffer_Read(_Out_writes_bytes_(ByteCount) BYTE* Dst, _In_ ULONG Byt
     ULONG avail = 0;
     if (g_Loopback.Initialized)
     {
-        // Pop whole 16-bit samples only, so the ring stays sample-aligned.
-        ULONG evenCount = ByteCount & ~1u;
-        avail = MIN(g_Loopback.Count, evenCount);
+        // Pop whole stereo frames only, so the ring stays frame-aligned.
+        ULONG frameCount = ByteCount & ~3u;
+        avail = MIN(g_Loopback.Count, frameCount);
 
         ULONG first = MIN(avail, g_Loopback.Capacity - g_Loopback.Tail);
         RtlCopyMemory(Dst, g_Loopback.Buffer + g_Loopback.Tail, first);
@@ -237,7 +245,7 @@ VOID LoopbackBuffer_Read(_Out_writes_bytes_(ByteCount) BYTE* Dst, _In_ ULONG Byt
 
     KeReleaseSpinLock(&g_Loopback.Lock, oldIrql);
 
-    // Pad the rest with silence (covers underrun and any trailing odd byte).
+    // Pad the rest with silence (covers underrun and any trailing partial frame).
     if (avail < ByteCount)
     {
         RtlZeroMemory(Dst + avail, ByteCount - avail);

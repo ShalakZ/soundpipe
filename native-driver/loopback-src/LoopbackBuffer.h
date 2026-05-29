@@ -15,7 +15,7 @@ Abstract:
 
     Render and capture are separate miniport/device instances and share no
     memory, so this global FIFO is the bridge. Canonical FIFO format is
-    48 kHz / 16-bit / MONO; stereo producers are downmixed on write.
+    48 kHz / 16-bit / STEREO; stereo producers pass through, mono is up-mixed.
 
     Prototype scope: "any render writes, any capture reads" - no endpoint
     pairing yet (that's Phase 2). During testing only one render + one capture
@@ -42,14 +42,14 @@ VOID LoopbackBuffer_Cleanup(void);
 //   Src          - rendered 16-bit PCM bytes from the render DMA buffer.
 //   ByteCount    - number of bytes at Src.
 //   SrcChannels  - channel count of the render stream (1 = mono, 2 = stereo).
-//                  Stereo is downmixed to mono (avg L/R) before being stored,
-//                  so the FIFO always holds mono 16-bit samples.
+//                  Stereo passes straight through; mono is up-mixed (L = R) so
+//                  the FIFO always holds 48 kHz / 16-bit / stereo frames.
 // On overflow the oldest data is dropped.
 //
 VOID LoopbackBuffer_Write(_In_reads_bytes_(ByteCount) const BYTE* Src, _In_ ULONG ByteCount, _In_ USHORT SrcChannels);
 
 //
-// Consumer: pull mono 16-bit PCM out of the FIFO into the capture DMA buffer.
+// Consumer: pull 48 kHz / 16-bit / stereo PCM out of the FIFO into the capture DMA buffer.
 // Safe to call up to DISPATCH_LEVEL. If the FIFO holds fewer bytes than
 // requested, the remainder is filled with silence (zero) - so when nothing is
 // playing, the mic produces silence, never stale data or a tone.
