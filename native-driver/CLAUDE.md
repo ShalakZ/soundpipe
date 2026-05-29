@@ -42,6 +42,9 @@ This VM is normally reached via Hyper-V **Enhanced Session (RDP)**, which **supp
 - The user (Ziad) is **non-technical on kernel/driver internals** — when reporting up, explain plainly. He makes product/spend decisions; prove things before spending money.
 - **Coordination:** the host PC is home base (the Electron app + planning/memory). Sync via this branch — commit your driver work plus a short progress note so the host side can review.
 
+## Worklog / reporting back to home base
+Keep a running plain-English log at `native-driver/WORKLOG.md`. **Every time you push the branch, append a short dated entry** (2–6 lines): what you did, current status, anything blocked or needing a decision, and what's next. Write it for a non-technical reader (the user) and the host Claude who reviews via `git pull` — NOT a code changelog. Newest entry at the top. This file is the only way the host side learns what happened, so keep it current on every push.
+
 ## Handy facts
 - VM user is `User`; host user is `Ziad2`.
 - On the host this repo lives at `C:\Users\Ziad2\soundboard` (also `~/soundpipe` from WSL). Product is "SoundPipe"; the folder is still named `soundboard`.
