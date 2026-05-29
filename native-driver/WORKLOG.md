@@ -2,6 +2,24 @@
 
 Newest entry first. Short, plain-English status on every push — for the user and the host-side Claude, not a code changelog.
 
+## 2026-05-29 — ✅ VM DRIVER WORK WRAPPED — handing off to host for mixer mode
+This closes the VM-side driver track. Everything is on `feat/native-driver`.
+
+**Done & proven (prototype):**
+- Our own virtual audio driver: **SoundPipe** (speaker) + **SoundPipe Virtual Mic**, manufacturer "SoundPipe", 48 kHz/16-bit **stereo** locked, auto-format on install.
+- **Stereo loopback proven** end-to-end (speaker→mic, channels independent), runtime rock-solid (no crashes in use, incl. a 2.5-min soak).
+- Gentle in-place installer (`loopback-src/install-and-test.ps1`), build/sign recipe, full change snapshot in `loopback-src/`.
+- Docs for the host: **`SUITE-ARCHITECTURE.md`** (the big picture) and **`MIXER-HANDOFF.md`** (the exact driver contract to build mixer mode against).
+
+**Host side picks up next (real hardware, the app — NOT the VM):**
+- **Mixer mode**: real mic + soundboard → DSP chain → render into "SoundPipe" → emerges on "SoundPipe Virtual Mic". Build against `MIXER-HANDOFF.md` (48 kHz stereo, pick devices by name, watch latency).
+- Then the effect suite (gate/compressor/EQ/noise-suppress/auto-tune) as app-side DSP blocks.
+
+**Deferred to the signing / real-PC phase (documented, don't lose):**
+- Bulletproof the install/uninstall teardown race (no BSOD ever, across many cycles).
+- Cosmetic: make the speaker read literally "SoundPipe".
+- Buy the ~$300/yr signing cert — the gate to install on a real PC (and the only way to test with a real headset/voice).
+
 ## 2026-05-29 — Consistency resolved: gentle install = no BSOD + pristine audio ✅
 - **Fixed install reliability.** Reworked the installer to update the driver **in place** (single `devcon update`) instead of the old double remove+reinstall churn. Ran it: **no BSOD**, both endpoints back, loopback **pristine on both channels** again (L 440 / R 880, ~0.15 each, no cross-talk across repeated grabs). The earlier "degraded left channel" was just the messy half-finished-install state — a clean install restores it.
 - So **runtime is correct + consistent, and the gentle install is reliable.** The deep teardown-race fix (a 100% no-BSOD guarantee across many install/uninstall cycles on a friend's PC) is still the real-PC / signing-phase task.
