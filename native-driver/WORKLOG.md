@@ -2,6 +2,13 @@
 
 Newest entry first. Short, plain-English status on every push — for the user and the host-side Claude, not a code changelog.
 
+## 2026-05-29 — Driver polish + mixer-mode handoff spec ✅ (one cosmetic item pending a clean reinstall)
+- **Branding fixed:** the device "Controller Information / Manufacturer" (and Provider/Copyright) read **"TODO-set-Manufacturer"** — now set to **SoundPipe**. Verified after reboot: device shows Manufacturer = SoundPipe.
+- **Speaker rename to "SoundPipe":** added a custom name to the speaker pin (mirroring how the mic gets its name). The code is in and builds, but it shows up only on a **clean** driver install — the last install hit a Windows "remove on reboot" snag (device was busy), so the one-time name registration didn't run, and the speaker still reads "Speakers (SoundPipe)". A clean reinstall (post-reboot) will apply it; the installer now also clears the cached endpoint *name* so the rename takes. **Pending one more install.**
+- **BT/USB code removal: tried, reverted.** Stripping the Bluetooth/USB build flags breaks Microsoft's sample (one of their files uses that code without the proper #ifdef guard). Since the code is already dormant (no BT/USB endpoints, never runs), I reverted rather than patch MS's code for a cosmetic size win. Keyword-detector removal similarly deferred.
+- **Wrote `native-driver/MIXER-HANDOFF.md`** — the precise driver contract for whoever builds mixer mode app-side (endpoint names, the 48 kHz-stereo rule, WASAPI render/capture steps, latency budget, testing notes). The driver side is a stable, documented "cable" now.
+- Everything functional re-verified after reboot: 2 endpoints, 48 kHz stereo both, loopback clean (L=440/R=880 separated), no BSOD.
+
 ## 2026-05-29 — Format locked to 48 kHz stereo + suite architecture written ✅
 - **Fixed the "mono / 44100" default** Ziad caught. The mic now advertises **only** 48 kHz / 16-bit / stereo (one format, nothing else), and the speaker now defaults to 48 kHz too. Confirmed on a fresh install: both endpoints came up **48 kHz stereo automatically** (no manual "Advanced tab" step — the installer's cache-clear handles it), and the loopback is still clean (left=440 / right=880 fully separated). No BSOD. This is what makes a friend's clean install "just work."
 - **Wrote `native-driver/SUITE-ARCHITECTURE.md`** — the plan to grow SoundPipe into a full voice suite (soundboard + noise gate + compressor + EQ + pitch/auto-tune + mixer). Key principle: keep the **kernel driver a dumb, stable "cable"** (done) and put all features in the **user-mode app** (safe, fast). Keystone feature = **mixer mode** (real mic + clips → effects → virtual mic). Effects are well-trodden DSP blocks. Signing (~$300/yr) is the gate to real PCs.

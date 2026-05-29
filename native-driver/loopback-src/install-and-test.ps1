@@ -99,8 +99,9 @@ foreach ($flow in 'Render','Capture') {
         $props = Join-Path $_.PSPath 'Properties'
         $name = (Get-ItemProperty $props -Name $NAMEKEY -ErrorAction SilentlyContinue).$NAMEKEY
         if ($name -match 'SoundPipe|SYSVAD|Speakers|Microphone|SinkDescription|SPDIF|Headphones') {
-            Remove-ItemProperty $props -Name $DEVFMT -ErrorAction SilentlyContinue
-            Write-Host "  cleared cached format: $name"
+            Remove-ItemProperty $props -Name $DEVFMT  -ErrorAction SilentlyContinue   # cached format
+            Remove-ItemProperty $props -Name $NAMEKEY -ErrorAction SilentlyContinue   # cached friendly name (so renames take)
+            Write-Host "  cleared cached format+name: $name"
         }
     }
 }

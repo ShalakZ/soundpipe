@@ -1,10 +1,11 @@
  .../sysvad/EndpointsCommon/EndpointsCommon.vcxproj |   1 +
  audio/sysvad/EndpointsCommon/minwavertstream.cpp   |  95 ++++++++--
  audio/sysvad/EndpointsCommon/minwavertstream.h     |   8 +-
+ audio/sysvad/EndpointsCommon/speakertoptable.h     |   9 +-
  audio/sysvad/EndpointsCommon/speakerwavtable.h     |  14 +-
- .../TabletAudioSample/ComponentizedAudioSample.inx |  12 +-
- .../ComponentizedAudioSampleExtension.inx          |   2 +-
+ .../TabletAudioSample/ComponentizedAudioSample.inx |  21 ++-
+ .../ComponentizedAudioSampleExtension.inx          |   6 +-
  audio/sysvad/TabletAudioSample/micinwavtable.h     | 196 ++-------------------
  audio/sysvad/TabletAudioSample/minipairs.h         |  14 +-
  audio/sysvad/adapter.cpp                           |  15 ++
- 9 files changed, 132 insertions(+), 225 deletions(-)
+ 10 files changed, 148 insertions(+), 231 deletions(-)

@@ -184,6 +184,33 @@ index 4e9e882..9c8fd86 100644
      VOID UpdatePosition
      (
          _In_ LARGE_INTEGER ilQPC
+diff --git a/audio/sysvad/EndpointsCommon/speakertoptable.h b/audio/sysvad/EndpointsCommon/speakertoptable.h
+index ea3890f..504d3cb 100644
+--- a/audio/sysvad/EndpointsCommon/speakertoptable.h
++++ b/audio/sysvad/EndpointsCommon/speakertoptable.h
+@@ -37,6 +37,13 @@ PKSDATARANGE SpeakerTopoPinDataRangePointersBridge[] =
+   &SpeakerTopoPinDataRangesBridge[0]
+ };
+ 
++//
++// SoundPipe: custom name for the render endpoint so it shows as "SoundPipe"
++// instead of Windows' default "Speakers". Mapped to a string in the INF.
++// {6e4fac9c-386e-44eb-8f3a-b9a787cfd016}
++DEFINE_GUID(SPEAKER_CUSTOM_NAME,
++0x6e4fac9c, 0x386e, 0x44eb, 0x8f, 0x3a, 0xb9, 0xa7, 0x87, 0xcf, 0xd0, 0x16);
++
+ //=============================================================================
+ static
+ PCPIN_DESCRIPTOR SpeakerTopoMiniportPins[] =
+@@ -77,7 +84,7 @@ PCPIN_DESCRIPTOR SpeakerTopoMiniportPins[] =
+       KSPIN_DATAFLOW_OUT,                               // DataFlow
+       KSPIN_COMMUNICATION_NONE,                         // Communication
+       &KSNODETYPE_SPEAKER,                              // Category
+-      NULL,                                             // Name
++      &SPEAKER_CUSTOM_NAME,                             // Name (SoundPipe)
+       0                                                 // Reserved
+     }
+   }
 diff --git a/audio/sysvad/EndpointsCommon/speakerwavtable.h b/audio/sysvad/EndpointsCommon/speakerwavtable.h
 index 6fb058a..4cf6a05 100644
 --- a/audio/sysvad/EndpointsCommon/speakerwavtable.h
