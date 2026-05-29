@@ -1,0 +1,148 @@
+diff --git a/audio/sysvad/EndpointsCommon/EndpointsCommon.vcxproj b/audio/sysvad/EndpointsCommon/EndpointsCommon.vcxproj
+index c1ba8b1..ff8c024 100644
+--- a/audio/sysvad/EndpointsCommon/EndpointsCommon.vcxproj
++++ b/audio/sysvad/EndpointsCommon/EndpointsCommon.vcxproj
+@@ -177,6 +177,7 @@
+     <ClCompile Include="a2dphpspeakertopo.cpp" />
+     <ClCompile Include="a2dphptopo.cpp" />
+     <ClCompile Include="AudioModuleHelper.cpp" />
++    <ClCompile Include="LoopbackBuffer.cpp" />
+     <ClCompile Include="bthhfpmictopo.cpp" />
+     <ClCompile Include="bthhfpminwavert.cpp" />
+     <ClCompile Include="bthhfpspeakertopo.cpp" />
+diff --git a/audio/sysvad/EndpointsCommon/minwavertstream.cpp b/audio/sysvad/EndpointsCommon/minwavertstream.cpp
+index adea0c8..8e909d8 100644
+--- a/audio/sysvad/EndpointsCommon/minwavertstream.cpp
++++ b/audio/sysvad/EndpointsCommon/minwavertstream.cpp
+@@ -6,6 +6,7 @@
+ #include "minwavertstream.h"
+ #include "UnittestData.h"
+ #include "AudioModuleHelper.h"
++#include "LoopbackBuffer.h"
+ #define MINWAVERTSTREAM_POOLTAG 'SRWM'
+ 
+ #pragma warning (disable : 4127)
+@@ -1469,6 +1470,12 @@ VOID CMiniportWaveRTStream::UpdatePosition
+                                         0);
+         }
+ 
++        // SoundPipe loopback: push the freshly-rendered audio into the global
++        // loopback FIFO so it can be drained by a capture (mic) endpoint. This
++        // must NOT be gated by g_DoNotCreateDataFiles (which defaults to on),
++        // otherwise the producer would never run and the mic would be silent.
++        ReadBytesForLoopback(ByteDisplacement);
++
+         if (!g_DoNotCreateDataFiles)
+         {
+             // Read from buffer and write to a file.
+@@ -1516,7 +1523,10 @@ ByteDisplacement - # of bytes to process.
+     while (ByteDisplacement > 0)
+     {
+         ULONG runWrite = min(ByteDisplacement, m_ulDmaBufferSize - bufferOffset);
+-            m_ToneGenerator.GenerateSine(m_pDmaBuffer + bufferOffset, runWrite);
++        // SoundPipe loopback: fill the capture buffer from the loopback FIFO
++        // (audio rendered into a render endpoint) instead of a synthetic tone.
++        // When nothing is playing, the FIFO read pads with silence.
++        LoopbackBuffer_Read(m_pDmaBuffer + bufferOffset, runWrite);
+         bufferOffset = (bufferOffset + runWrite) % m_ulDmaBufferSize;
+         ByteDisplacement -= runWrite;
+     }
+@@ -1553,6 +1563,39 @@ ByteDisplacement - # of bytes to process.
+     }
+ }
+ 
++//=============================================================================
++#pragma code_seg()
++VOID CMiniportWaveRTStream::ReadBytesForLoopback
++(
++    _In_ ULONG ByteDisplacement
++)
++/*++
++
++Routine Description:
++
++  SoundPipe loopback producer. Reads the freshly-rendered audio out of this
++  render stream's DMA buffer and pushes it into the global loopback FIFO, from
++  which a capture (microphone) stream drains it. Stereo render audio is
++  downmixed to mono inside the FIFO.
++
++Arguments:
++
++  ByteDisplacement - # of bytes rendered since the last tick.
++
++--*/
++{
++    USHORT channels = m_pWfExt ? m_pWfExt->Format.nChannels : 2;
++    ULONG  bufferOffset = m_ullLinearPosition % m_ulDmaBufferSize;
++
++    while (ByteDisplacement > 0)
++    {
++        ULONG runWrite = min(ByteDisplacement, m_ulDmaBufferSize - bufferOffset);
++        LoopbackBuffer_Write(m_pDmaBuffer + bufferOffset, runWrite, channels);
++        bufferOffset = (bufferOffset + runWrite) % m_ulDmaBufferSize;
++        ByteDisplacement -= runWrite;
++    }
++}
++
+ //=============================================================================
+ #pragma code_seg("PAGE")
+ STDMETHODIMP_(NTSTATUS) 
+diff --git a/audio/sysvad/EndpointsCommon/minwavertstream.h b/audio/sysvad/EndpointsCommon/minwavertstream.h
+index 4e9e882..9c8fd86 100644
+--- a/audio/sysvad/EndpointsCommon/minwavertstream.h
++++ b/audio/sysvad/EndpointsCommon/minwavertstream.h
+@@ -290,7 +290,13 @@ private:
+     (
+         _In_ ULONG ByteDisplacement
+     );
+-    
++
++    // SoundPipe loopback: push rendered audio into the global loopback FIFO.
++    VOID ReadBytesForLoopback
++    (
++        _In_ ULONG ByteDisplacement
++    );
++
+     VOID UpdatePosition
+     (
+         _In_ LARGE_INTEGER ilQPC
+diff --git a/audio/sysvad/adapter.cpp b/audio/sysvad/adapter.cpp
+index 0f44c59..5ad91ba 100644
+--- a/audio/sysvad/adapter.cpp
++++ b/audio/sysvad/adapter.cpp
+@@ -26,6 +26,7 @@ Abstract:
+ 
+ #include "simple.h"
+ #include "minipairs.h"
++#include "LoopbackBuffer.h"
+ #ifdef SYSVAD_BTH_BYPASS
+ #include "bthhfpminipairs.h"
+ #endif // SYSVAD_BTH_BYPASS
+@@ -328,6 +329,11 @@ Environment:
+ 
+     ReleaseRegistryStringBuffer();
+ 
++    //
++    // SoundPipe: free the global loopback FIFO.
++    //
++    LoopbackBuffer_Cleanup();
++
+     if (DriverObject == NULL)
+     {
+         goto Done;
+@@ -567,6 +573,15 @@ Return Value:
+         DPF(D_ERROR, ("Registry Configuration error 0x%x", ntStatus)),
+         Done);
+ 
++    //
++    // SoundPipe: allocate the global loopback FIFO (render -> capture bridge).
++    //
++    ntStatus = LoopbackBuffer_Init();
++    IF_FAILED_ACTION_JUMP(
++        ntStatus,
++        DPF(D_ERROR, ("LoopbackBuffer_Init failed, 0x%x", ntStatus)),
++        Done);
++
+     //
+     // Tell the class driver to initialize the driver.
+     //
