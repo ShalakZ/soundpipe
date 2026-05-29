@@ -11,7 +11,7 @@ index c1ba8b1..ff8c024 100644
      <ClCompile Include="bthhfpminwavert.cpp" />
      <ClCompile Include="bthhfpspeakertopo.cpp" />
 diff --git a/audio/sysvad/EndpointsCommon/minwavertstream.cpp b/audio/sysvad/EndpointsCommon/minwavertstream.cpp
-index adea0c8..8e909d8 100644
+index adea0c8..f5d316b 100644
 --- a/audio/sysvad/EndpointsCommon/minwavertstream.cpp
 +++ b/audio/sysvad/EndpointsCommon/minwavertstream.cpp
 @@ -6,6 +6,7 @@
@@ -35,7 +35,19 @@ index adea0c8..8e909d8 100644
          if (!g_DoNotCreateDataFiles)
          {
              // Read from buffer and write to a file.
-@@ -1516,7 +1523,10 @@ ByteDisplacement - # of bytes to process.
+@@ -1509,6 +1516,11 @@ ByteDisplacement - # of bytes to process.
+ 
+ --*/
+ {
++    if (m_pDmaBuffer == NULL || m_ulDmaBufferSize == 0)
++    {
++        return;
++    }
++
+     ULONG bufferOffset = m_ullLinearPosition % m_ulDmaBufferSize;
+ 
+     // Normally this will loop no more than once for a single wrap, but if
+@@ -1516,7 +1528,10 @@ ByteDisplacement - # of bytes to process.
      while (ByteDisplacement > 0)
      {
          ULONG runWrite = min(ByteDisplacement, m_ulDmaBufferSize - bufferOffset);
@@ -47,7 +59,7 @@ index adea0c8..8e909d8 100644
          bufferOffset = (bufferOffset + runWrite) % m_ulDmaBufferSize;
          ByteDisplacement -= runWrite;
      }
-@@ -1553,6 +1563,39 @@ ByteDisplacement - # of bytes to process.
+@@ -1553,6 +1568,48 @@ ByteDisplacement - # of bytes to process.
      }
  }
  
@@ -72,7 +84,16 @@ index adea0c8..8e909d8 100644
 +
 +--*/
 +{
-+    USHORT channels = m_pWfExt ? m_pWfExt->Format.nChannels : 2;
++    // Only render pins backed by a simple WaveRT DMA buffer carry PCM we can read
++    // here. Other render pins (offload via the audio engine, the WASAPI loopback
++    // pin) have no m_pDmaBuffer - dereferencing it would read a near-NULL address
++    // at DISPATCH_LEVEL (bugcheck 0xD1). Also guards against divide-by-zero below.
++    if (m_pDmaBuffer == NULL || m_ulDmaBufferSize == 0 || m_pWfExt == NULL)
++    {
++        return;
++    }
++
++    USHORT channels = m_pWfExt->Format.nChannels;
 +    ULONG  bufferOffset = m_ullLinearPosition % m_ulDmaBufferSize;
 +
 +    while (ByteDisplacement > 0)
