@@ -2,6 +2,12 @@
 
 Newest entry first. Short, plain-English status on every push — for the user and the host-side Claude, not a code changelog.
 
+## 2026-05-29 — KNOWN ISSUE: install-churn teardown race (BSOD during repeated reinstalls)
+- Re-running the installer again BSOD'd (0xD1 in TimerNotifyRT, use-after-free: a stream freed mid-install-churn, timer tick fired on reused memory). This is **install/uninstall-time only** — the driver is **stable once running** (loopback proven repeatedly incl. a 2.5-min soak, no runtime crashes).
+- Root: the sysvad sample's stream teardown vs its 1 ms timer is racy under heavy PnP churn. My destructor timer-drain fixed the common NULL case; this rarer reused-memory case isn't fully closed. The install script's aggressive double remove+reinstall (step 2c) maximizes the churn that triggers it.
+- **Decision: stop the reinstall loop.** The driver is functionally complete, proven, and installed. We were only reinstalling for a cosmetic speaker rename ("SoundPipe" vs "Speakers (SoundPipe)") — not worth BSOD risk. Speaker name stays "Speakers (SoundPipe)" for now.
+- **To harden before any real-PC release** (must-fix then, not now): (a) make install gentler (drop the double remove+reinstall), and (b) properly serialize stream teardown vs the timer DPC (e.g. a validity flag checked under m_PositionSpinLock, or guarantee ExDeleteTimer(wait) on every teardown path). Needs careful install testing — deferred to when we tackle signing/real-PC.
+
 ## 2026-05-29 — Driver polish + mixer-mode handoff spec ✅ (one cosmetic item pending a clean reinstall)
 - **Branding fixed:** the device "Controller Information / Manufacturer" (and Provider/Copyright) read **"TODO-set-Manufacturer"** — now set to **SoundPipe**. Verified after reboot: device shows Manufacturer = SoundPipe.
 - **Speaker rename to "SoundPipe":** added a custom name to the speaker pin (mirroring how the mic gets its name). The code is in and builds, but it shows up only on a **clean** driver install — the last install hit a Windows "remove on reboot" snag (device was busy), so the one-time name registration didn't run, and the speaker still reads "Speakers (SoundPipe)". A clean reinstall (post-reboot) will apply it; the installer now also clears the cached endpoint *name* so the rename takes. **Pending one more install.**
