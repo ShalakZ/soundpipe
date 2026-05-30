@@ -2,6 +2,12 @@
 
 Newest entry first. Short, plain-English status on every push — for the user and the host-side Claude, not a code changelog.
 
+## 2026-05-30 — Host: voice-duck slider added to mixer mode ✅
+- Mixer mode (voice + sounds on one mic) confirmed working on the main PC via VB-CABLE. User asked for a way to choose voice+sound vs sound-priority; chose a single global slider over a toggle / per-sound.
+- **Added `mixerVoiceDuckDb` (0..60 dB)** under Mixer mode in Settings: 0 = both equal (default, unchanged behavior), middle = voice dips while a sound plays, 60 = voice muted ("sound priority"). MixerEngine ramps the mic gain (50 ms, click-free) driven by AudioEngine's playing-voice count; no-op outside mixer mode. Both tsconfig projects typecheck clean.
+- **Re-test:** `git pull` + restart dev; with mixer on, drag the slider and play a sound while talking — at 0 both equal, higher values dip/мute the voice during playback.
+- Mixer-mode app feature set is now solid (capture + mix + CORS fix + raw mic + duck). Open threads remain the DRIVER side: the ~$300/yr signing cert to put the real SoundPipe driver on real PCs, and the install-churn teardown-race hardening (both already logged below). App can keep using VB-CABLE as the stand-in until then.
+
 ## 2026-05-30 — Host: fixed voice being gated out when a sound plays (mic DSP)
 - **Test result:** mixer now puts soundboard clips on the recorder ✅, but the user's voice was cut off completely whenever a sound played. Cause: default `getUserMedia` enables call-tuned DSP — `echoCancellation`/`noiseSuppression`/`autoGainControl`. Echo cancellation treats the in-app soundboard audio as "echo" and suppresses the mic during playback → full voice gate.
 - **Fix:** force all three OFF in `MixerEngine.applyMicSource`. A soundboard wants the raw mic summed with the sounds so you can talk over them. Web typecheck clean.
