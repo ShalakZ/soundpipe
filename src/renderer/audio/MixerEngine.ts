@@ -66,6 +66,12 @@ export class MixerEngine {
     return this.started;
   }
 
+  /** Stop and release the whole graph (mic capture + AudioContext). Call on
+   * app teardown. */
+  dispose(): void {
+    this.stop();
+  }
+
   /** Wire a playing soundboard voice into the mix. Called by AudioEngine
    * before the element starts playing, so audio is captured from sample 1. */
   attachClip(el: HTMLAudioElement): void {
@@ -101,6 +107,14 @@ export class MixerEngine {
     } catch (err) {
       console.error('[soundpipe] mixer AudioContext init failed', err);
       return;
+    }
+    // A fresh context can start "suspended" under Chromium's autoplay policy.
+    // setSettings is driven from a user gesture (the settings toggle), so a
+    // resume here is allowed and gets audio flowing.
+    try {
+      await this.ctx.resume();
+    } catch {
+      /* already running or not required */
     }
     this.mixGain = this.ctx.createGain();
     this.mixGain.gain.value = 1.0;

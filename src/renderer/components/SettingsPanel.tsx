@@ -158,6 +158,49 @@ export function SettingsPanel({ onClose }: Props) {
         </section>
 
         <section className="mb-5">
+          <div className="flex items-center mb-1">
+            <label className="text-sm font-medium">
+              Mixer mode — your voice + sounds on one mic
+            </label>
+            <label className="ml-auto flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={settings.mixerMode ?? false}
+                onChange={(e) => void patchSettings({ mixerMode: e.target.checked })}
+              />
+              Enable
+            </label>
+          </div>
+          <p className="text-xs text-muted mb-2">
+            Blends your real microphone with the soundboard and sends both to the
+            virtual microphone above — so people in Discord and games hear you talk{' '}
+            <em>and</em> your sounds, with no extra routing. When off, only the
+            sounds are sent to the virtual mic.
+          </p>
+          {(settings.mixerMode ?? false) && (
+            <>
+              <label className="block text-xs text-muted mb-1">
+                Your real microphone
+              </label>
+              <DeviceSelector
+                kind="audioinput"
+                value={settings.realMicDeviceId ?? null}
+                onChange={(v) => void patchSettings({ realMicDeviceId: v })}
+                emptyLabel="— Default microphone —"
+              />
+              {!settings.virtualMicDeviceId && (
+                <p className="text-xs text-danger mt-2">
+                  Pick the virtual microphone output above for mixer mode to work.
+                </p>
+              )}
+              <p className="text-xs text-muted mt-2">
+                In your game or voice app, select the virtual microphone as your input device.
+              </p>
+            </>
+          )}
+        </section>
+
+        <section className="mb-5">
           <label className="block text-sm font-medium mb-1">
             Monitor output (you hear yourself)
           </label>

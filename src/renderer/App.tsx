@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from './state/store';
 import { AudioEngine } from './audio/AudioEngine';
+import { MixerEngine } from './audio/MixerEngine';
 import { ClipBuffer } from './audio/ClipBuffer';
 import { encodeWav } from './audio/wav';
 import { SoundboardGrid } from './components/SoundboardGrid';
@@ -20,6 +21,8 @@ export function App() {
   const activeProfile = profiles.find((p) => p.id === settings.activeProfileId);
 
   const engineRef = useRef<AudioEngine | null>(null);
+  const mixerRef = useRef<MixerEngine | null>(null);
+  const prevMixerModeRef = useRef<boolean | null>(null);
   const clipBufferRef = useRef<ClipBuffer | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [clipsOpen, setClipsOpen] = useState(false);
@@ -71,7 +74,10 @@ export function App() {
   useEffect(() => {
     if (!hydrated) return;
     if (!engineRef.current) {
-      engineRef.current = new AudioEngine(settings);
+      // MixerEngine must exist before AudioEngine — AudioEngine routes each
+      // voice through it when mixer mode is on.
+      mixerRef.current = new MixerEngine(settings);
+      engineRef.current = new AudioEngine(settings, mixerRef.current);
       engineRef.current.setOnPlayingChange((ids) => {
         useStore.getState().setPlayingSoundIds(ids);
         // Notify main so auto-PTT can hold/release the configured key.
@@ -81,6 +87,31 @@ export function App() {
       engineRef.current.updateSettings(settings);
     }
   }, [hydrated, settings]);
+
+  // Mixer mode: start/stop the real-mic + soundboard graph and re-target its
+  // output (virtual mic) / input (real mic) when those device selections
+  // change. On a mixerMode flip we also clear in-flight voices, because
+  // createMediaElementSource is one-time per <audio> element, so voices started
+  // under the previous routing can't be re-routed live — the next press makes
+  // fresh ones on the new path.
+  useEffect(() => {
+    if (!hydrated || !mixerRef.current) return;
+    const mode = settings.mixerMode ?? false;
+    if (prevMixerModeRef.current !== null && prevMixerModeRef.current !== mode) {
+      engineRef.current?.stopAll();
+    }
+    prevMixerModeRef.current = mode;
+    void mixerRef.current.setSettings(settings);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, settings.mixerMode, settings.virtualMicDeviceId, settings.realMicDeviceId]);
+
+  // Release the mixer graph (mic capture + AudioContext) on unmount.
+  useEffect(() => {
+    return () => {
+      mixerRef.current?.dispose();
+      mixerRef.current = null;
+    };
+  }, []);
 
   // Re-target sink IDs on already-playing voices when device selection changes
   useEffect(() => {
