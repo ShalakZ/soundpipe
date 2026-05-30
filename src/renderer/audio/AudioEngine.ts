@@ -145,10 +145,18 @@ export class AudioEngine {
     // hold + toggle both keep the sound playing until externally stopped;
     // oneshot may either play once or N times (handled via repeatsLeft + onEnded).
     const shouldLoopForever = sound.mode === 'hold' || sound.mode === 'toggle';
-    const micEl = new Audio(src) as AudioElementWithSink;
+    // crossOrigin must be set BEFORE the source loads. In mixer mode the clip
+    // is routed through Web Audio (createMediaElementSource), and Chromium
+    // emits SILENCE for cross-origin media unless it was fetched in CORS mode.
+    // Clips come from the sb-file:// protocol (a different origin than the app),
+    // whose handler returns Access-Control-Allow-Origin: *, so anonymous CORS
+    // un-taints the stream. Harmless for the direct setSinkId playback path.
+    const micEl = new Audio() as AudioElementWithSink;
+    micEl.crossOrigin = 'anonymous';
     micEl.preload = 'auto';
     micEl.loop = shouldLoopForever;
     attachMediaErrorLogger(micEl, 'mic', src);
+    micEl.src = src;
 
     let monitorEl: AudioElementWithSink | null = null;
     if (this.settings.monitorDeviceId) {
