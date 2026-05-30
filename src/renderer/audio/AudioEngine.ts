@@ -1,4 +1,5 @@
 import type { Settings, Sound } from '@shared/types';
+import type { MixerEngine } from './MixerEngine';
 
 type Voice = {
   soundId: string;
@@ -6,6 +7,8 @@ type Voice = {
   monitorEl: HTMLAudioElement | null;
   /** Plays remaining after the current one. Used for oneshot loopCount > 1. */
   repeatsLeft: number;
+  /** True if the micEl was wired into MixerEngine's audio graph (mixer mode). */
+  attachedToMixer: boolean;
 };
 
 // HTMLAudioElement.setSinkId exists in Chromium but isn't on the standard lib types.
@@ -59,10 +62,12 @@ function attachMediaErrorLogger(el: HTMLAudioElement, label: string, src: string
 export class AudioEngine {
   private voices = new Map<string, Voice>();
   private settings: Settings;
+  private mixer: MixerEngine | null;
   private playingListener: ((playing: Set<string>) => void) | null = null;
 
-  constructor(settings: Settings) {
+  constructor(settings: Settings, mixer?: MixerEngine | null) {
     this.settings = settings;
+    this.mixer = mixer ?? null;
   }
 
   /** Subscribe to changes in the set of currently-playing sound IDs. */
@@ -159,11 +164,22 @@ export class AudioEngine {
       micEl,
       monitorEl,
       repeatsLeft: initialRepeats,
+      attachedToMixer: false,
     };
     this.voices.set(sound.id, voice);
     this.notifyPlayingChange();
     this.applyVolume(voice, sound);
     this.applyPitch(voice, sound);
+
+    // Mixer mode: wire the soundboard voice into the MixerEngine graph so it
+    // gets blended with the real mic. Must happen BEFORE applySinks (which
+    // would otherwise setSinkId on this element) and BEFORE .play() so audio
+    // is captured from the first sample. createMediaElementSource is one-time
+    // per element, so we only attach voices started while mixer mode is active.
+    if (this.settings.mixerMode && this.mixer && this.mixer.isActive()) {
+      this.mixer.attachClip(micEl);
+      voice.attachedToMixer = true;
+    }
 
     try {
       await this.applySinks(voice);
@@ -211,9 +227,14 @@ export class AudioEngine {
   }
 
   private async applySinks(voice: Voice): Promise<void> {
-    const micId = this.settings.virtualMicDeviceId;
-    if (micId && typeof voice.micEl.setSinkId === 'function') {
-      await (voice.micEl as AudioElementWithSink).setSinkId(micId);
+    // In mixer mode, the micEl is wired into MixerEngine's Web Audio graph;
+    // createMediaElementSource has taken over routing from the OS sink, so
+    // setSinkId on it would be a no-op. Skip.
+    if (!voice.attachedToMixer) {
+      const micId = this.settings.virtualMicDeviceId;
+      if (micId && typeof voice.micEl.setSinkId === 'function') {
+        await (voice.micEl as AudioElementWithSink).setSinkId(micId);
+      }
     }
     if (voice.monitorEl && this.settings.monitorDeviceId) {
       if (typeof (voice.monitorEl as AudioElementWithSink).setSinkId === 'function') {
@@ -242,6 +263,9 @@ export class AudioEngine {
 
   private disposeVoice(v: Voice): void {
     (v.micEl as SilentableAudio).__sbDisposed = true;
+    if (v.attachedToMixer && this.mixer) {
+      this.mixer.detachClip(v.micEl);
+    }
     try {
       v.micEl.pause();
       v.micEl.removeAttribute('src');

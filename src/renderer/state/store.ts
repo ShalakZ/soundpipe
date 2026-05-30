@@ -62,6 +62,8 @@ export const useStore = create<Store>((set, get) => ({
       duckDb: -12,
     },
     setupComplete: false,
+    mixerMode: false,
+    realMicDeviceId: null,
   },
   clips: [],
   hydrated: false,

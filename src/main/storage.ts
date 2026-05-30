@@ -107,6 +107,8 @@ const defaultSettings: Settings = {
     duckDb: -12,
   },
   setupComplete: false,
+  mixerMode: false,
+  realMicDeviceId: null,
 };
 
 const defaultState: AppState = {

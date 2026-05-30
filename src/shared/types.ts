@@ -125,6 +125,14 @@ export type Settings = {
   micDucking?: MicDuckingSettings;
   /** Set once the user has finished the first-run setup wizard. */
   setupComplete?: boolean;
+  /** Mixer mode: capture the user's real mic and mix it with soundboard
+   * audio, rendering the mix into `virtualMicDeviceId`. When off, each
+   * soundboard clip plays directly to `virtualMicDeviceId` (no real-mic blend).
+   * Default off while developing — flip on for testing. */
+  mixerMode?: boolean;
+  /** Input device id for the user's real mic when `mixerMode` is on.
+   * null = OS default input. */
+  realMicDeviceId?: string | null;
   /**
    * Set once the one-shot file-naming migration has run (renames legacy
    * id-based folders/files to human-readable names on first launch).
