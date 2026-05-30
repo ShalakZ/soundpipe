@@ -40,6 +40,7 @@ export class MixerEngine {
   private micSource: MediaStreamAudioSourceNode | null = null;
   private micGain: GainNode | null = null;
   private started = false;
+  private soundsActive = false;
   private clipSources = new WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>();
 
   constructor(settings: Settings) {
@@ -57,6 +58,8 @@ export class MixerEngine {
       if ((prev.realMicDeviceId ?? null) !== (next.realMicDeviceId ?? null)) {
         await this.applyMicSource();
       }
+      // Re-apply the duck in case the amount changed in settings.
+      this.applyMicDuck();
     } else if (this.started) {
       this.stop();
     }
@@ -70,6 +73,35 @@ export class MixerEngine {
    * app teardown. */
   dispose(): void {
     this.stop();
+  }
+
+  /** Called by AudioEngine when the set of playing sounds changes. Drives the
+   * "duck my voice while sounds play" setting: the real mic dips while any
+   * sound is playing and restores when they stop. No-op outside mixer mode. */
+  setSoundsActive(active: boolean): void {
+    if (this.soundsActive === active) return;
+    this.soundsActive = active;
+    this.applyMicDuck();
+  }
+
+  // Target gain for the real mic: full while idle, attenuated while a sound
+  // plays. 0 dB = no duck, >= 60 dB = full mute ("sound priority").
+  private duckGain(): number {
+    const db = this.settings.mixerVoiceDuckDb ?? 0;
+    if (db <= 0) return 1.0;
+    if (db >= 60) return 0;
+    return Math.pow(10, -db / 20);
+  }
+
+  private applyMicDuck(): void {
+    if (!this.ctx || !this.micGain) return;
+    const target = this.soundsActive ? this.duckGain() : 1.0;
+    const now = this.ctx.currentTime;
+    const g = this.micGain.gain;
+    // Short ramp so the level change doesn't click.
+    g.cancelScheduledValues(now);
+    g.setValueAtTime(g.value, now);
+    g.linearRampToValueAtTime(target, now + 0.05);
   }
 
   /** Wire a playing soundboard voice into the mix. Called by AudioEngine
@@ -187,9 +219,11 @@ export class MixerEngine {
       });
       this.micSource = this.ctx.createMediaStreamSource(this.micStream);
       this.micGain = this.ctx.createGain();
-      this.micGain.gain.value = 1.0; // future: mic level, mute, push-to-talk
+      this.micGain.gain.value = 1.0;
       this.micSource.connect(this.micGain);
       this.micGain.connect(this.mixGain);
+      // Respect the current duck state (sounds may already be playing).
+      this.applyMicDuck();
     } catch (err) {
       console.error('[soundpipe] mixer getUserMedia failed', err);
     }

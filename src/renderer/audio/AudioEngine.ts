@@ -78,6 +78,8 @@ export class AudioEngine {
 
   private notifyPlayingChange(): void {
     if (this.playingListener) this.playingListener(new Set(this.voices.keys()));
+    // Drive the mixer's "duck my voice while sounds play" setting.
+    if (this.mixer) this.mixer.setSoundsActive(this.voices.size > 0);
   }
 
   updateSettings(settings: Settings): void {

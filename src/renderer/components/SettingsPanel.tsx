@@ -193,7 +193,34 @@ export function SettingsPanel({ onClose }: Props) {
                   Pick the virtual microphone output above for mixer mode to work.
                 </p>
               )}
-              <p className="text-xs text-muted mt-2">
+
+              <div className="mt-3">
+                <label className="block text-xs text-muted mb-1">
+                  {(() => {
+                    const d = settings.mixerVoiceDuckDb ?? 0;
+                    if (d <= 0) return 'Duck my voice while sounds play: Off (both equal)';
+                    if (d >= 60) return 'Duck my voice while sounds play: Full (voice muted)';
+                    return `Duck my voice while sounds play: −${d} dB`;
+                  })()}
+                </label>
+                <input
+                  type="range"
+                  min={0}
+                  max={60}
+                  step={3}
+                  value={settings.mixerVoiceDuckDb ?? 0}
+                  onChange={(e) =>
+                    void patchSettings({ mixerVoiceDuckDb: Number(e.target.value) })
+                  }
+                  className="w-full"
+                />
+                <p className="text-xs text-muted mt-1">
+                  Left = talk over your sounds. Right = sounds take priority and your
+                  voice drops while they play.
+                </p>
+              </div>
+
+              <p className="text-xs text-muted mt-3">
                 In your game or voice app, select the virtual microphone as your input device.
               </p>
             </>

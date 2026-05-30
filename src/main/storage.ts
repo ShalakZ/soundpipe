@@ -109,6 +109,7 @@ const defaultSettings: Settings = {
   setupComplete: false,
   mixerMode: false,
   realMicDeviceId: null,
+  mixerVoiceDuckDb: 0,
 };
 
 const defaultState: AppState = {

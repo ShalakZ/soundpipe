@@ -64,6 +64,7 @@ export const useStore = create<Store>((set, get) => ({
     setupComplete: false,
     mixerMode: false,
     realMicDeviceId: null,
+    mixerVoiceDuckDb: 0,
   },
   clips: [],
   hydrated: false,

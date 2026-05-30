@@ -133,6 +133,10 @@ export type Settings = {
   /** Input device id for the user's real mic when `mixerMode` is on.
    * null = OS default input. */
   realMicDeviceId?: string | null;
+  /** Lower the real mic by this many dB while any sound is playing (mixer
+   * mode). 0 = off (voice + sound equal). >= 60 = voice fully muted while a
+   * sound plays ("sound priority"). Default 0. */
+  mixerVoiceDuckDb?: number;
   /**
    * Set once the one-shot file-naming migration has run (renames legacy
    * id-based folders/files to human-readable names on first launch).
