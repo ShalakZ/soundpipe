@@ -2,6 +2,11 @@
 
 Newest entry first. Short, plain-English status on every push — for the user and the host-side Claude, not a code changelog.
 
+## 2026-05-30 — Host: fixed mixer mode dropping soundboard clips (CORS taint)
+- **First real-PC test result:** voice reached Voice Recorder via CABLE, but soundboard clips did NOT. Diagnosis: in mixer mode the clip `<audio>` is routed through Web Audio (`createMediaElementSource`), and Chromium emits **silence for cross-origin media** unless the element was fetched in CORS mode. Clips come from the `sb-file://` protocol (different origin than the app) → mixer got a muted clip. (Confirms the clip WAS attaching to the mixer — otherwise it'd have leaked to CABLE via setSinkId and been audible.)
+- **Fix:** set `crossOrigin='anonymous'` on the clip element before assigning `src`. The `sb-file://` handler already returns `Access-Control-Allow-Origin: *`, so anonymous CORS un-taints the stream. No effect on the normal (non-mixer) setSinkId playback path. Web typecheck clean.
+- **Re-test:** Windows side — stop dev, `git pull`, `npm run dev`, repeat the Voice Recorder test. Expect BOTH voice and clips now.
+
 ## 2026-05-30 — Host: mixer mode wired into App + Settings UI (ready for a real-PC test)
 - **Mixer mode is now usable from the UI.** Added a "Mixer mode — your voice + sounds on one mic" toggle in Settings (under the virtual-mic output), plus a real-mic device picker that appears when it's on. App.tsx creates the `MixerEngine`, drives its start/stop + device re-targeting reactively, clears in-flight voices on a mixerMode flip (one-time `createMediaElementSource` constraint), and disposes the graph on unmount.
 - **No main-process permission change needed** (had it on the to-do list): the app already calls `getUserMedia({audio:true})` at startup to unlock device labels, so mic capture is already permitted in this Electron build. Skipped adding a handler rather than add code for a non-problem.
