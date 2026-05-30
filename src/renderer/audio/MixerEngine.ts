@@ -167,12 +167,24 @@ export class MixerEngine {
     }
 
     try {
-      const constraints: MediaStreamConstraints = {
-        audio: this.settings.realMicDeviceId
-          ? { deviceId: { exact: this.settings.realMicDeviceId } }
-          : true,
+      // Disable Chromium's call-tuned mic DSP. With echoCancellation on, the
+      // browser treats the soundboard audio playing in this app as "echo" and
+      // suppresses the mic whenever a sound plays — cutting the user's voice
+      // out entirely. A soundboard wants the RAW mic summed with the sounds so
+      // you can talk over them, so all three are forced off. (Deliberate
+      // voice-ducking, if wanted, is a separate opt-in feature with an
+      // adjustable amount — not this full gate.)
+      const audioConstraints: MediaTrackConstraints = {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
       };
-      this.micStream = await navigator.mediaDevices.getUserMedia(constraints);
+      if (this.settings.realMicDeviceId) {
+        audioConstraints.deviceId = { exact: this.settings.realMicDeviceId };
+      }
+      this.micStream = await navigator.mediaDevices.getUserMedia({
+        audio: audioConstraints,
+      });
       this.micSource = this.ctx.createMediaStreamSource(this.micStream);
       this.micGain = this.ctx.createGain();
       this.micGain.gain.value = 1.0; // future: mic level, mute, push-to-talk
