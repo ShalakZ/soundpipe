@@ -2,6 +2,20 @@
 
 Newest entry first. Short, plain-English status on every push — for the user and the host-side Claude, not a code changelog.
 
+## 2026-05-30 — Host: mixer mode wired into App + Settings UI (ready for a real-PC test)
+- **Mixer mode is now usable from the UI.** Added a "Mixer mode — your voice + sounds on one mic" toggle in Settings (under the virtual-mic output), plus a real-mic device picker that appears when it's on. App.tsx creates the `MixerEngine`, drives its start/stop + device re-targeting reactively, clears in-flight voices on a mixerMode flip (one-time `createMediaElementSource` constraint), and disposes the graph on unmount.
+- **No main-process permission change needed** (had it on the to-do list): the app already calls `getUserMedia({audio:true})` at startup to unlock device labels, so mic capture is already permitted in this Electron build. Skipped adding a handler rather than add code for a non-problem.
+- **Both tsconfig projects typecheck clean** (ran `tsc --noEmit` for web + node). Behavior is unchanged when mixer mode is off (stable v0.1.0 path untouched).
+- **Needs a real Windows run to verify** — WSL can't exercise audio. Test recipe below.
+
+### How to test mixer mode on the main PC (uses VB-CABLE, no cert needed)
+1. Pull `feat/native-driver`, `npm install` + `npm run dev` from a Windows PowerShell at `C:\Users\Ziad2\soundboard` (NOT WSL).
+2. Settings → set **Virtual microphone output = "CABLE Input (VB-Audio Virtual Cable)"**.
+3. Turn **Mixer mode = on**, pick your real headset mic as "Your real microphone".
+4. Open Windows **Voice Recorder**, set its input to **"CABLE Output"**, record while you talk AND fire a soundboard clip. Play it back: you should hear BOTH your voice and the clip. (Or join a Discord test call with mic = CABLE Output.)
+5. Expected: voice + sounds mixed on one mic. Watch latency on the live voice path — if it's too laggy, we shrink WASAPI buffers / consider exclusive-mode render. Report back and host-Claude iterates.
+- When the signed SoundPipe driver eventually lands on the main PC, just pick "SoundPipe" / "SoundPipe Virtual Mic" instead of CABLE — same code path.
+
 ## 2026-05-30 — Host: mixer-mode foundation (audio graph + settings; no UI yet)
 - **Set up the host-side audio graph for mixer mode.** New `src/renderer/audio/MixerEngine.ts` owns a single 48 kHz `AudioContext`, captures the user's real mic via `getUserMedia`, and mixes mic + soundboard playback into a `MediaStreamAudioDestinationNode`. A long-lived `<audio>` element streams that mix into the configured virtual mic device via `setSinkId`. `AudioEngine` now optionally takes a `MixerEngine` and routes each soundboard voice through it (`createMediaElementSource`) when mixer mode is on, instead of `setSinkId`-ing the clip element directly.
 - **Two new settings:** `mixerMode` (default off while we dev) and `realMicDeviceId` (null = OS default input). Defaults wired in `storage.ts` and the renderer store.
