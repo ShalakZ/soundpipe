@@ -2,6 +2,12 @@
 
 Newest entry first. Short, plain-English status on every push — for the user and the host-side Claude, not a code changelog.
 
+## 2026-05-30 — Host: fixed voice being gated out when a sound plays (mic DSP)
+- **Test result:** mixer now puts soundboard clips on the recorder ✅, but the user's voice was cut off completely whenever a sound played. Cause: default `getUserMedia` enables call-tuned DSP — `echoCancellation`/`noiseSuppression`/`autoGainControl`. Echo cancellation treats the in-app soundboard audio as "echo" and suppresses the mic during playback → full voice gate.
+- **Fix:** force all three OFF in `MixerEngine.applyMicSource`. A soundboard wants the raw mic summed with the sounds so you can talk over them. Web typecheck clean.
+- **Re-test:** stop dev, `git pull`, `npm run dev`; talk while a sound plays → both should be audible together now.
+- **Possible follow-up feature (NOT a bug):** intentional voice *ducking* (lower the voice a set amount while sounds play, not cut it) — would be an opt-in setting with an adjustable dB amount, distinct from this gate. The app already has a VoiceMeeter-based `micDucking` concept; an app-side mixer duck could reuse that idea. Only build if the user asks.
+
 ## 2026-05-30 — Host: fixed mixer mode dropping soundboard clips (CORS taint)
 - **First real-PC test result:** voice reached Voice Recorder via CABLE, but soundboard clips did NOT. Diagnosis: in mixer mode the clip `<audio>` is routed through Web Audio (`createMediaElementSource`), and Chromium emits **silence for cross-origin media** unless the element was fetched in CORS mode. Clips come from the `sb-file://` protocol (different origin than the app) → mixer got a muted clip. (Confirms the clip WAS attaching to the mixer — otherwise it'd have leaked to CABLE via setSinkId and been audible.)
 - **Fix:** set `crossOrigin='anonymous'` on the clip element before assigning `src`. The `sb-file://` handler already returns `Access-Control-Allow-Origin: *`, so anonymous CORS un-taints the stream. No effect on the normal (non-mixer) setSinkId playback path. Web typecheck clean.
