@@ -2,6 +2,13 @@
 
 Newest entry first. Short, plain-English status on every push — for the user and the host-side Claude, not a code changelog.
 
+## 2026-05-30 — Host: mixer-mode foundation (audio graph + settings; no UI yet)
+- **Set up the host-side audio graph for mixer mode.** New `src/renderer/audio/MixerEngine.ts` owns a single 48 kHz `AudioContext`, captures the user's real mic via `getUserMedia`, and mixes mic + soundboard playback into a `MediaStreamAudioDestinationNode`. A long-lived `<audio>` element streams that mix into the configured virtual mic device via `setSinkId`. `AudioEngine` now optionally takes a `MixerEngine` and routes each soundboard voice through it (`createMediaElementSource`) when mixer mode is on, instead of `setSinkId`-ing the clip element directly.
+- **Two new settings:** `mixerMode` (default off while we dev) and `realMicDeviceId` (null = OS default input). Defaults wired in `storage.ts` and the renderer store.
+- **Passthrough behavior unchanged** when `mixerMode` is off — v0.1.0's audio path is bit-identical to today. Dev target = VB-CABLE on the main PC (test-signed SoundPipe driver only exists in the VM); user picks the virtual mic device manually for now, auto-pick-by-friendly-name is later polish.
+- **Next (host turn):** UI toggle + real-mic picker in `SettingsPanel.tsx`, mic-permission grant in `main/index.ts` (Electron blocks `getUserMedia` without it), and `App.tsx` wiring to create `MixerEngine` and drive `setSettings` reactively. Then: flip mixer mode on, point virtual mic at "CABLE Input", and verify in Voice Recorder that the recording carries both real voice and a played soundboard clip.
+- **Gotcha for the toggle wiring:** `createMediaElementSource(el)` is one-time per element, so when mixer mode flips we'll call `stopAll()` to clear in-flight voices (next commit).
+
 ## 2026-05-29 — ✅ VM DRIVER WORK WRAPPED — handing off to host for mixer mode
 This closes the VM-side driver track. Everything is on `feat/native-driver`.
 
